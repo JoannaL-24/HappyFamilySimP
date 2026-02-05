@@ -44,7 +44,7 @@ dependencies:
   supabase_flutter: ^2.0.0
 
   # Game engine
-  # flame: ^1.26.0
+  flame: ^1.26.0
 
   # Routing
   # go_router: ^15.1.2
