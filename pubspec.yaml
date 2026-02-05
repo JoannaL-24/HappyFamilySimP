@@ -39,16 +39,19 @@ dependencies:
   # flutter_riverpod: ^2.6.1
   # riverpod_annotation: ^2.6.1
 
-  # # Backend - Supabase
+  # Backend - Supabase
   # supabase_flutter: ^2.8.4
+  supabase_flutter: ^2.0.0
 
-  # # Game engine
+  # Game engine
   # flame: ^1.26.0
 
-  # # Routing
+  # Routing
   # go_router: ^15.1.2
 
-  # # Utilities
+  # Utilities
+  flutter_dotenv: ^5.0.2
+  logger: ^2.6.2
   # image_picker: ^1.1.2
   # cached_network_image: ^3.4.1
   # intl: ^0.20.2
@@ -81,6 +84,7 @@ flutter:
 
   # Game and app assets
   assets:
+    - .env
     - assets/images/
     - assets/sprites/
 
