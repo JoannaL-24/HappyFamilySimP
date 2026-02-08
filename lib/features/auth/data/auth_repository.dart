@@ -1,17 +1,33 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_service.dart';
 
 class AuthRepository {
-  final _client = Supabase.instance.client;
+  final AuthService _authService;
+  AuthRepository(this._authService);
 
-  Future<AuthResponse> signUpParent({
-    required String email,
-    required String password,
-    required String name,
-  }) async {
-    return await _client.auth.signUp(
-      email: email,
-      password: password,
-      data: {'full_name': name, 'role': 'parent'},
-    );
+  Future<void> createParentAccount(
+    String email,
+    String password,
+    String name,
+  ) async {
+    try {
+      await _authService.parentSignUP(
+        email: email,
+        password: password,
+        parentName: name,
+      );
+
+      await _authService.signOut();
+    } on AuthException catch (e) {
+      // This is a "400/401" style error from Supabase (e.g., User already exists)
+      throw Exception(e.message);
+    } on SocketException catch (_) {
+      // This is a "No Internet" error (Network layer)
+      throw Exception('No internet connection. Please check your connection and try again.');
+    } catch (e) {
+      // This is your "500" style error (Internal Server/Logic error)
+      throw Exception('An unexpected error occurred. Please try again later.');
+    }
   }
 }
