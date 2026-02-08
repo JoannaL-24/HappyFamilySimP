@@ -2,8 +2,10 @@ import 'package:flutter/cupertino.dart';
 import '../data/auth_repository.dart';
 
 class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
   @override
-  _SignUpScreenState createState() => _SignUpScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
@@ -28,14 +30,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(middle: Text('Create Account')),
+      navigationBar: const CupertinoNavigationBar(middle: Text('Create Account')),
       child: SafeArea(
         child: Column(
           children: [
             CupertinoTextField(controller: _nameController, placeholder: 'Name'),
             CupertinoTextField(controller: _emailController, placeholder: 'Email'),
             CupertinoTextField(controller: _passwordController, placeholder: 'Password', obscureText: true),
-            CupertinoButton.filled(child: Text('Create Account'), onPressed: _handleSignUp),
+            CupertinoButton.filled(onPressed: _handleSignUp, child: const Text('Create Account')),
           ],
         ),
       ),
