@@ -1,20 +1,46 @@
 class Utils {
-  static String passwordValidator(String password) {
+  static String? emailValidator(String? email) {
+    final trimmedEmail = email?.trim() ?? '';
+    if (trimmedEmail.isEmpty || !trimmedEmail.contains('@')) {
+      return 'Enter a valid email';
+    }
+    return null;
+  }
+
+  static String? passwordValidator(String? password) {
+    if (password == null || password.isEmpty) {
+      return 'Password is required';
+    }
+
+    List<String> errors = [];
+
     if (password.length < 8) {
-      return "Password must be at least 8 characters long.";
+      errors.add('• At least 8 characters long');
     }
-    if (!RegExp(r"[A-Z]").hasMatch(password)) {
-      return "Password must contain at least one uppercase letter.";
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      errors.add('• At least one uppercase letter (A-Z)');
     }
-    if (!RegExp(r"[a-z]").hasMatch(password)) {
-      return "Password must contain at least one lowercase letter.";
+    if (!RegExp(r'[a-z]').hasMatch(password)) {
+      errors.add('• At least one lowercase letter (a-z)');
     }
-    if (!RegExp(r"[0-9]").hasMatch(password)) {
-      return "Password must contain at least one digit.";
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      errors.add('• At least one digit (0-9)');
     }
-    if (!RegExp(r"[!@#\$&*~]").hasMatch(password)) {
-      return "Password must contain at least one special character (!@#\$&*~).";
+
+    // This covers: ! @ # $ % ^ & * ( ) _ + - = [ ] { } | \ : ; " ' < > , . ? / ~ `
+    final specialCharRegex = RegExp(
+      r'[!@#$%^&*()_+=\-\[\]{}|\\:;"'
+      r"'"
+      r'<> ,.?/~`]',
+    );
+    if (!specialCharRegex.hasMatch(password)) {
+      errors.add('• One special character (e.g., @, #, \$, %)');
     }
-    return "Valid password.";
+
+    if (errors.isEmpty) {
+      return null;
+    } else {
+      return 'Password must include:\n${errors.join('\n')}';
+    }
   }
 }
