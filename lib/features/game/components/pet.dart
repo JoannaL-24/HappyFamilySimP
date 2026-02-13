@@ -6,10 +6,8 @@ enum PetState { idle, box }
 class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
   @override
   Future<void> onLoad() async {
-    await super.onLoad();
-
     anchor = Anchor.bottomCenter;
-    size = Vector2(100, 100);
+    size = Vector2(32, 32);
 
     final [idle, box] = await Future.wait([
       SpriteAnimation.load(
@@ -32,6 +30,8 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
 
     animations = {PetState.idle: idle, PetState.box: box};
     current = PetState.idle;
+
+    return super.onLoad();
   }
 
   @override
