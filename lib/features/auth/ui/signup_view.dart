@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:happy_family_sim/core/utils.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key});
+  final AuthRepository authRepository;
+  const SignUpScreen({super.key, required this.authRepository});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -13,20 +16,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
 
   final _formKey = GlobalKey<FormState>();
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      final name = _nameController.text.trim();
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
+      setState(() => _isLoading = true);
 
-      // TODO: link with supabase
-      print("Form is valid! Ready to connect to AuthRepository.");
-      print("Name: ${name}");
-      print("Email: ${email}");
-      print("Password: ${password}");
+      try {
+        final name = _nameController.text.trim();
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+
+        await widget.authRepository.createParentAccount(email, password, name);
+
+        Utils.showSuccess('Account created successfully!');
+
+        if (mounted) {
+          // redirect to welcome page
+          context.go('/');
+        }
+      } catch (e) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+        Utils.showError(message);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -107,16 +123,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 30),
 
                 // submission button
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
+                _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : ElevatedButton(
+                        onPressed: _submitForm,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                        ),
+                        child: const Text(
+                          'Create Account',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
               ],
             ),
           ),
