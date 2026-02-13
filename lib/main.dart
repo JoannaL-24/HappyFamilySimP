@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:happy_family_sim/core/router.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:happy_family_sim/features/auth/data/auth_service.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,11 +24,17 @@ Future<void> main() async {
     logger.e("Error during initialization", error: e, stackTrace: stackTrace);
   }
 
-  runApp(const HappyFamilyApp());
+  // initialize dependencies
+  final supabase = Supabase.instance.client;
+  final authService = AuthService(supabase);
+  final authRepository = AuthRepository(authService);
+
+  runApp(HappyFamilyApp(authRepository: authRepository));
 }
 
 class HappyFamilyApp extends StatelessWidget {
-  const HappyFamilyApp({super.key});
+  final AuthRepository authRepository;
+  const HappyFamilyApp({super.key, required this.authRepository});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +45,7 @@ class HappyFamilyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      routerConfig: router,
+      routerConfig: createRouter(authRepository),
     );
   }
 }

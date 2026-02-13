@@ -5,7 +5,6 @@ class AuthService {
   final SupabaseClient _supabase;
   AuthService(this._supabase);
 
-
   Future<void> parentSignUP({
     required String email,
     required String password,
@@ -23,7 +22,6 @@ class AuthService {
     }
 
     await _supabase.from('profiles').insert({
-      'id': user.id,
       'name': parentName,
       'role': Constants.parentRole,
       'avatar_path': Constants.defaultAvatarPath,
@@ -33,7 +31,6 @@ class AuthService {
   Future<void> signOut() async {
     await _supabase.auth.signOut();
   }
-
 
   // Future<AuthResponse> childSignUP({
   //   required String email,
