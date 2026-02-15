@@ -67,6 +67,23 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
+              // parent app button
+              ElevatedButton.icon(
+                onPressed: () => context.go('/parent/tasks'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(250, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 5,
+                ),
+                label: const Text(
+                  'Parent App Temp',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // login button
               OutlinedButton(
                 onPressed: () => context.go('/login'),
