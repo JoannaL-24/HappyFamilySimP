@@ -70,7 +70,7 @@ class UiBar extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
-    position = Vector2(4, 4);
+    position = Vector2(4, 10);
 
     const spacing = 10.0;
 
