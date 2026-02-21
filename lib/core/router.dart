@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/widgets/main_wrapper.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/ui/login_view.dart';
@@ -7,9 +8,14 @@ import 'package:happy_family_sim/features/auth/ui/welcome_view.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
 import 'package:happy_family_sim/features/profile/ui/profile_view.dart';
+import 'package:happy_family_sim/features/tasks/ui/child/tasks_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
 
-GoRouter createRouter(AuthRepository authRepository) {
+GoRouter createRouter(
+  AuthRepository authRepository,
+  String userRole,
+  Function(String) onLoginSucess,
+) {
   final parentBranches = [
     StatefulShellBranch(
       routes: [
@@ -37,8 +43,44 @@ GoRouter createRouter(AuthRepository authRepository) {
     ),
   ];
 
+  final childBranches = [
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: '/child/tasks',
+          builder: (context, state) => const ChildTasksScreen(),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: '/chlid/game',
+          builder: (context, state) => const GameScreen(),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: '/parent/profile',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+      ],
+    ),
+  ];
+
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: () {
+      switch (userRole) {
+        case Constants.parentRole:
+          return '/parent/tasks';
+        case Constants.childRole:
+          return '/child/tasks';
+        default:
+          return '/';
+      }
+    }(),
     routes: [
       GoRoute(
         path: '/',
@@ -52,7 +94,10 @@ GoRouter createRouter(AuthRepository authRepository) {
           ),
           GoRoute(
             path: 'login',
-            builder: (context, state) => const LoginScreen(),
+            builder: (context, state) => LoginScreen(
+              authRepository: authRepository,
+              onLoginSuccess: onLoginSucess,
+            ),
           ),
           GoRoute(
             path: 'game',
@@ -60,13 +105,18 @@ GoRouter createRouter(AuthRepository authRepository) {
           ),
         ],
       ),
-      // other routes
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) {
-          return MainWrapper(navigationShell: navigationShell);
-        },
-        branches: parentBranches,
-      ),
+      if (userRole != Constants.guestRole)
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return MainWrapper(
+              navigationShell: navigationShell,
+              userRole: userRole,
+            );
+          },
+          branches: userRole == Constants.parentRole
+              ? parentBranches
+              : childBranches,
+        ),
     ],
   );
 }

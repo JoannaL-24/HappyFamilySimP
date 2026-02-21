@@ -1,5 +1,6 @@
 class Constants {
   // roles
+  static const String guestRole = 'guest';
   static const String parentRole = 'parent';
   static const String childRole = 'child';
 

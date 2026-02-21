@@ -54,7 +54,7 @@ class Utils {
     Fluttertoast.showToast(
       msg: message,
       toastLength: Toast.LENGTH_LONG,
-      timeInSecForIosWeb: 5,
+      timeInSecForIosWeb: 3,
       gravity: ToastGravity.BOTTOM,
       backgroundColor: Colors.green,
       textColor: Colors.white,
@@ -66,7 +66,7 @@ class Utils {
     Fluttertoast.showToast(
       msg: message,
       toastLength: Toast.LENGTH_LONG,
-      timeInSecForIosWeb: 5,
+      timeInSecForIosWeb: 3,
       gravity: ToastGravity.BOTTOM,
       backgroundColor: Colors.red,
       textColor: Colors.white,

@@ -29,13 +29,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         final email = _emailController.text.trim();
         final password = _passwordController.text;
 
-        await widget.authRepository.createParentAccount(email, password, name);
+        await widget.authRepository.parentSignUp(email, password, name);
 
         Utils.showSuccess('Account created successfully!');
 
         if (mounted) {
-          // redirect to welcome page
-          context.go('/');
+          context.go('/login');
         }
       } catch (e) {
         final message = e.toString().replaceFirst('Exception: ', '');

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:happy_family_sim/core/utils.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthRepository authRepository;
+  final Function(String) onLoginSuccess;
+  const LoginScreen({
+    super.key,
+    required this.authRepository,
+    required this.onLoginSuccess,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,28 +25,31 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isCodeVisible = false;
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _childCodeController.dispose();
-    super.dispose();
-  }
-
-  void _handleLogin(GlobalKey<FormState> formKey) async {
+  Future<void> _handleLogin(GlobalKey<FormState> formKey) async {
     if (formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      // TODO:
-      // 1. Sign in with email/password
-      // 2. Fetch role from 'profiles' table
-      // 3. Navigate to appropriate dashboard
+      try {
+        final isParent = formKey == _parentFormKey;
+        final email = _emailController.text.trim();
+        final password = isParent
+            ? _passwordController.text
+            : _childCodeController.text;
 
-      await Future.delayed(const Duration(seconds: 1));
+        final role = await widget.authRepository.signIn(email, password);
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.go('/management');
+        if (mounted) {
+          // update current role in main app state
+          // rebuild the router widget, so don't need to redirect
+          widget.onLoginSuccess(role);
+
+          Utils.showSuccess('Welcome back!');
+        }
+      } catch (e) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+        Utils.showError(message);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -253,5 +262,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _childCodeController.dispose();
+    super.dispose();
   }
 }

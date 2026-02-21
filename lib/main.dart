@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/router.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_service.dart';
@@ -32,9 +33,22 @@ Future<void> main() async {
   runApp(HappyFamilyApp(authRepository: authRepository));
 }
 
-class HappyFamilyApp extends StatelessWidget {
+class HappyFamilyApp extends StatefulWidget {
   final AuthRepository authRepository;
   const HappyFamilyApp({super.key, required this.authRepository});
+
+  @override
+  State<HappyFamilyApp> createState() => _HappyFamilyAppState();
+}
+
+class _HappyFamilyAppState extends State<HappyFamilyApp> {
+  String _currentRole = Constants.guestRole;
+
+  void _updateRole(String newRole) {
+    setState(() {
+      _currentRole = newRole;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +59,11 @@ class HappyFamilyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      routerConfig: createRouter(authRepository),
+      routerConfig: createRouter(
+        widget.authRepository,
+        _currentRole,
+        _updateRole,
+      ),
     );
   }
 }

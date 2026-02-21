@@ -5,7 +5,7 @@ class AuthService {
   final SupabaseClient _supabase;
   AuthService(this._supabase);
 
-  Future<void> parentSignUP({
+  Future<void> parentSignUpService({
     required String email,
     required String password,
     required String parentName,
@@ -28,7 +28,30 @@ class AuthService {
     });
   }
 
-  Future<void> signOut() async {
+  Future<String> signInService({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _supabase.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+
+    final user = response.user;
+    if (user == null) {
+      throw Exception('Log in failed');
+    }
+
+    final data = await _supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    return data['role'] as String;
+  }
+
+  Future<void> signOutService() async {
     await _supabase.auth.signOut();
   }
 
