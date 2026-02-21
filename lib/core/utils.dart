@@ -4,8 +4,11 @@ import 'package:fluttertoast/fluttertoast.dart';
 class Utils {
   static String? emailValidator(String? email) {
     final trimmedEmail = email?.trim() ?? '';
-    if (trimmedEmail.isEmpty || !trimmedEmail.contains('@')) {
-      return 'Enter a valid email';
+    if (trimmedEmail.isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!trimmedEmail.contains('@')) {
+      return 'Please enter a valid email';
     }
     return null;
   }

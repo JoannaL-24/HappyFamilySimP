@@ -49,9 +49,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Parent Account')),
+      appBar: AppBar(),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -122,21 +122,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // submission button
-                _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(),
-                      )
-                    : ElevatedButton(
-                        onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                        ),
-                        child: const Text(
-                          'Create Account',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                      ),
+                // sign-up button
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Sign Up', style: TextStyle(fontSize: 16)),
+                ),
               ],
             ),
           ),
