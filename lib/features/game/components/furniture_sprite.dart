@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 
-/// Sprite data for a single furniture item from the sprite sheet.
 class _SpriteData {
   final int id;
   final double x, y, width, height;
@@ -27,9 +26,6 @@ class _SpriteData {
   }
 }
 
-/// Loads and caches the furniture sprite sheet + JSON coordinate map.
-/// Call [FurnitureSpriteSheet.load] once, then use [createSprite] to
-/// build sprites by ID.
 class FurnitureSpriteSheet {
   FurnitureSpriteSheet._(this._sprites, this._image);
 
@@ -38,7 +34,6 @@ class FurnitureSpriteSheet {
 
   static FurnitureSpriteSheet? _instance;
 
-  /// Load the sprite sheet and JSON. Safe to call multiple times (cached).
   static Future<FurnitureSpriteSheet> load() async {
     if (_instance != null) return _instance!;
 
