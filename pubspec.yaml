@@ -54,3 +54,6 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/Assets/
+    - assets/images/Assets/Backgrounds/Classic/
+    - assets/images/Assets/Backgrounds/XmasTheme/

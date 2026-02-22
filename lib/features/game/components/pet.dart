@@ -4,6 +4,9 @@ import 'package:flame/events.dart';
 enum PetState { idle, box }
 
 class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
+  final Vector2 velocity = Vector2.zero();
+  double speed = 100;
+
   @override
   Future<void> onLoad() async {
     anchor = Anchor.bottomCenter;
@@ -32,6 +35,19 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
     current = PetState.idle;
 
     return super.onLoad();
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    position.add(velocity * speed * dt);
+
+    // Flip sprite when moving left
+    if (velocity.x > 0 && !isFlippedHorizontally) {
+      flipHorizontallyAroundCenter();
+    } else if (velocity.x < 0 && isFlippedHorizontally) {
+      flipHorizontallyAroundCenter();
+    }
   }
 
   @override
