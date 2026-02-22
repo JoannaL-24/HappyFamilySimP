@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-ASSET_DIR = os.path.join(PROJECT_ROOT, "assets", "images", "PetMobileGameAsset")
+ASSET_DIR = os.path.join(PROJECT_ROOT, "assets", "images", "Assets")
 
 INPUT_IMAGE = os.path.join(ASSET_DIR, "Furnitures,Playgrounds,Toys.png")
 OUTPUT_JSON = os.path.join(ASSET_DIR, "furnitures_sprites.json")
@@ -112,9 +112,25 @@ def filter_small(boxes, min_size):
             if (b[2] - b[0] + 1) >= min_size and (b[3] - b[1] + 1) >= min_size]
 
 
-def sort_boxes(boxes):
-    """Sort top-to-bottom, left-to-right."""
-    return sorted(boxes, key=lambda b: (b[1], b[0]))
+def sort_boxes(boxes, row_band=200):
+    """Sort top-to-bottom by row, same-sized sprites adjacent within each row.
+
+    1. Bucket sprites into rows by y-center (bands of row_band pixels)
+    2. Rows ordered top-to-bottom
+    3. Within each row, sort by (width, height, x) so same-sized sprites cluster
+    """
+    if not boxes:
+        return boxes
+
+    # Sort by y-center band, then by size within each band, then by x
+    def sort_key(b):
+        y_center = (b[1] + b[3]) // 2
+        row = y_center // row_band
+        w = b[2] - b[0] + 1
+        h = b[3] - b[1] + 1
+        return (row, w, h, b[0])
+
+    return sorted(boxes, key=sort_key)
 
 
 def draw_debug_image(img, boxes, output_path):
