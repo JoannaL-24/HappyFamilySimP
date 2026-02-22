@@ -8,6 +8,18 @@ class AuthRepository {
   final AuthService _authService;
   AuthRepository(this._authService);
 
+  Stream<AuthState> get authStateChanges =>
+      _authService.authStateChangesService;
+
+  Future<String?> getPersistedRole() async {
+    try {
+      return await _authService.getPersistedRoleService();
+    } catch (e) {
+      logger.e('Failed to fetch persisted role', error: e);
+      return null;
+    }
+  }
+
   Future<void> parentSignUp(String email, String password, String name) async {
     try {
       await _authService.parentSignUpService(
@@ -64,6 +76,14 @@ class AuthRepository {
     } catch (e) {
       logger.e('Unexpected error during login', error: e);
       throw Exception('An unexpected error occurred. Please try again later.');
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _authService.signOutService();
+    } catch (e) {
+      logger.e('Error during sign out', error: e);
     }
   }
 }

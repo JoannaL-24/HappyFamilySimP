@@ -5,6 +5,22 @@ class AuthService {
   final SupabaseClient _supabase;
   AuthService(this._supabase);
 
+  Stream<AuthState> get authStateChangesService =>
+      _supabase.auth.onAuthStateChange;
+
+  Future<String?> getPersistedRoleService() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return null;
+
+    final data = await _supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    return data['role'] as String;
+  }
+
   Future<void> parentSignUpService({
     required String email,
     required String password,

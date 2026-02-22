@@ -110,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: !_isPasswordVisible,
               decoration: InputDecoration(
                 labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline),
+                prefixIcon: const Icon(Icons.lock_outlined),
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -155,19 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     )
                   : const Text('Login', style: TextStyle(fontSize: 16)),
             ),
-            const SizedBox(height: 16),
-
-            // register redirect
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.center,
-            //   children: [
-            //     const Text("Don't have a parent account?"),
-            //     TextButton(
-            //       onPressed: () => context.go('/signup'),
-            //       child: const Text('Sign Up'),
-            //     ),
-            //   ],
-            // ),
           ],
         ),
       ),
@@ -245,19 +232,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     )
                   : const Text('Login', style: TextStyle(fontSize: 16)),
             ),
-            const SizedBox(height: 16),
-
-            // register redirect
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.center,
-            //   children: [
-            //     const Text("Don't have a parent account?"),
-            //     TextButton(
-            //       onPressed: () => context.go('/signup'),
-            //       child: const Text('Sign Up'),
-            //     ),
-            //   ],
-            // ),
           ],
         ),
       ),

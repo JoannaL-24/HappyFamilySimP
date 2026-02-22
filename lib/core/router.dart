@@ -37,7 +37,8 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/profile',
-          builder: (context, state) => const ProfileScreen(),
+          builder: (context, state) =>
+              ProfileScreen(authRepository: authRepository),
         ),
       ],
     ),
@@ -64,7 +65,8 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/profile',
-          builder: (context, state) => const ProfileScreen(),
+          builder: (context, state) =>
+              ProfileScreen(authRepository: authRepository),
         ),
       ],
     ),

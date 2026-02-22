@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:happy_family_sim/core/utils.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final AuthRepository authRepository;
+
+  const ProfileScreen({super.key, required this.authRepository});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -46,7 +48,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {});
   }
 
-  // 2. Fetch Logic: Called once when page opens
+  // TODO:
+  // Fetch Logic: Called once when page opens
   Future<void> _fetchProfileData() async {
     // Simulate Supabase fetch delay
     await Future.delayed(const Duration(seconds: 1));
@@ -64,7 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 3. Revert Logic: Reset UI to the "Original" data fetched in initState
+  // TODO:
+  // Revert Logic: Reset UI to the "Original" data fetched in initState
   void _cancelEdit() {
     setState(() {
       _nameController.text = _originalName ?? "";
@@ -74,7 +78,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // 4. Update Logic: Where you will eventually call Supabase
+  // TODO:
+  // Update Logic: Where you will eventually call Supabase
   Future<void> _updateProfile() async {
     print('name: ${_nameController.text}');
     print('pickedImage: ${_pickedImage?.path}');
@@ -116,6 +121,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Log out',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('Are you sure you want to log out?'),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+
+      await widget.authRepository.signOut();
+
+      // don't have to redirect, main app is listening for the logout event
+      // it will automatically change the role and rebuild the router
+      Utils.showSuccess('Logged out successfully!');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Show a spinner while the initial fetch happens
@@ -131,7 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // AVATAR SECTION
+              // avatar
               Center(
                 child: Stack(
                   children: [
@@ -199,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 40),
 
-              // ACTION BUTTONS
+              // action buttons
               Row(
                 children: [
                   Expanded(
@@ -221,11 +266,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 32),
               const Divider(),
 
-              // LOGOUT
+              // logout
               SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
-                  onPressed: () => context.go('/'),
+                  onPressed: _isLoading ? null : _handleLogout,
                   icon: const Icon(Icons.logout, color: Colors.red),
                   label: const Text(
                     'Logout',
@@ -235,7 +280,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-        )
+        ),
       ),
     );
   }
