@@ -97,8 +97,10 @@ GoRouter createRouter(
           // children routes, have a back button
           GoRoute(
             path: 'signup',
-            builder: (context, state) =>
-                SignUpScreen(authRepository: authRepository),
+            builder: (context, state) => SignUpScreen(
+              authRepository: authRepository,
+              onLoginSuccess: onLoginSucess,
+            ),
           ),
           GoRoute(
             path: 'login',

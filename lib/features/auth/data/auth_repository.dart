@@ -28,8 +28,6 @@ class AuthRepository {
         password: password,
         parentName: name,
       );
-
-      await _authService.signOutService();
     } on AuthException catch (e) {
       logger.e('Auth error during account creation', error: e);
 

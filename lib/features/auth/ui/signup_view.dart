@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:logger/logger.dart';
+
+var logger = Logger();
 
 class SignUpScreen extends StatefulWidget {
   final AuthRepository authRepository;
-  const SignUpScreen({super.key, required this.authRepository});
+  final Function(String) onLoginSuccess;
+  const SignUpScreen({
+    super.key,
+    required this.authRepository,
+    required this.onLoginSuccess,
+  });
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -33,13 +41,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         await widget.authRepository.parentSignUp(email, password, name);
 
-        Utils.showSuccess('Account created successfully!');
-
-        if (mounted) {
-          context.go('/login');
-        }
+        widget.onLoginSuccess(Constants.parentRole);
+        Utils.showSuccess('Welcome to Happy Family Sim!');
       } catch (e) {
         final message = e.toString().replaceFirst('Exception: ', '');
+        logger.e("Error during sign-up", error: e);
         Utils.showError(message);
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -100,7 +106,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 TextFormField(
                   controller: _passwordController,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
-                  obscureText: true,
+                  obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outlined),
@@ -140,7 +146,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
                   ),
-                  obscureText: true,
+                  obscureText: !_isConfirmPasswordVisible,
                   validator: (value) {
                     if (value != _passwordController.text) {
                       return 'Passwords do not match';
