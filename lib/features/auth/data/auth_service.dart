@@ -5,8 +5,9 @@ class AuthService {
   final SupabaseClient _supabase;
   AuthService(this._supabase);
 
-  Stream<AuthState> get authStateChangesService =>
-      _supabase.auth.onAuthStateChange;
+  User? get currentUser => _supabase.auth.currentUser;
+
+  Stream<AuthState> get authChangesService => _supabase.auth.onAuthStateChange;
 
   Future<String?> getPersistedRoleService() async {
     final user = _supabase.auth.currentUser;

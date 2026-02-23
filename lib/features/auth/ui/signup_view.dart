@@ -99,6 +99,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // password
                 TextFormField(
                   controller: _passwordController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
@@ -122,6 +123,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // confirm password
                 TextFormField(
                   controller: _confirmPasswordController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
                     prefixIcon: const Icon(Icons.lock_outline),

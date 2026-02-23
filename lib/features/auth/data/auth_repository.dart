@@ -1,6 +1,6 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'auth_service.dart';
+import 'package:happy_family_sim/features/auth/data/auth_service.dart';
 import 'package:logger/logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 var logger = Logger();
 
@@ -8,8 +8,9 @@ class AuthRepository {
   final AuthService _authService;
   AuthRepository(this._authService);
 
-  Stream<AuthState> get authStateChanges =>
-      _authService.authStateChangesService;
+  User? get currentUser => _authService.currentUser;
+
+  Stream<AuthState> get authChanges => _authService.authChangesService;
 
   Future<String?> getPersistedRole() async {
     try {

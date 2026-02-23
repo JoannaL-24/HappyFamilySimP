@@ -6,6 +6,8 @@ import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/router.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_service.dart';
+import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
+import 'package:happy_family_sim/features/profile/data/profile_service.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,13 +33,25 @@ Future<void> main() async {
   final supabase = Supabase.instance.client;
   final authService = AuthService(supabase);
   final authRepository = AuthRepository(authService);
+  final profileService = ProfileService(supabase);
+  final profileRepository = ProfileRepository(profileService);
 
-  runApp(HappyFamilyApp(authRepository: authRepository));
+  runApp(
+    HappyFamilyApp(
+      authRepository: authRepository,
+      profileRepository: profileRepository,
+    ),
+  );
 }
 
 class HappyFamilyApp extends StatefulWidget {
   final AuthRepository authRepository;
-  const HappyFamilyApp({super.key, required this.authRepository});
+  final ProfileRepository profileRepository;
+  const HappyFamilyApp({
+    super.key,
+    required this.authRepository,
+    required this.profileRepository,
+  });
 
   @override
   State<HappyFamilyApp> createState() => _HappyFamilyAppState();
@@ -62,7 +76,7 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
 
   Future<void> _initializeAuth() async {
     // listen to auth changes to update role and log current user
-    _authSubscription = widget.authRepository.authStateChanges.listen((data) {
+    _authSubscription = widget.authRepository.authChanges.listen((data) {
       final AuthChangeEvent event = data.event;
       if (event == AuthChangeEvent.signedOut) {
         _updateRole(Constants.guestRole);
@@ -108,6 +122,7 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
       ),
       routerConfig: createRouter(
         widget.authRepository,
+        widget.profileRepository,
         _currentRole,
         _updateRole,
       ),

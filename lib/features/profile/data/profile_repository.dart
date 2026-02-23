@@ -1,8 +1,9 @@
 import 'dart:io';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'profile_service.dart';
+import 'package:happy_family_sim/features/profile/data/profile_model.dart';
+import 'package:happy_family_sim/features/profile/data/profile_service.dart';
 import 'package:logger/logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 var logger = Logger();
 
@@ -14,14 +15,14 @@ class ProfileRepository {
     String userId,
     String? name,
     String? newPassword,
-    File? pickedImage,
+    File? selectedImage,
   ) async {
     try {
       final updateMessage = await _profileService.updateProfileService(
         userId: userId,
         name: name,
         newPassword: newPassword,
-        pickedImage: pickedImage,
+        selectedImage: selectedImage,
       );
 
       return updateMessage;
@@ -36,10 +37,9 @@ class ProfileRepository {
     }
   }
 
-  Future<Map<String, dynamic>> fetchUserProfile(String userId) async {
+  Future<ProfileModel> fetchUserProfile(String userId) async {
     try {
-      final data = await _profileService.fetchProfileService(userId: userId);
-      return data;
+      return await _profileService.fetchProfileService(userId: userId);
     } on PostgrestException catch (e) {
       logger.e('Postgrest error during profile fetch', error: e);
 

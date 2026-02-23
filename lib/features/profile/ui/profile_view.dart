@@ -1,13 +1,20 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
 
-  const ProfileScreen({super.key, required this.authRepository});
+  const ProfileScreen({
+    super.key,
+    required this.authRepository,
+    required this.profileRepository,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -17,20 +24,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  File? _pickedImage;
+  File? _selectedImage;
   String? _originalName;
   String? _originalAvatarUrl;
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = true;
   bool get _saveEnabled {
     final nameChanged = _nameController.text.trim() != _originalName;
+    final imageChanged = _selectedImage != null;
 
-    final imageChanged = _pickedImage != null;
+    final passwordAttempted = _passwordController.text.isNotEmpty;
+    final passwordReady =
+        passwordAttempted &&
+        _confirmPasswordController.text == _passwordController.text &&
+        Utils.passwordValidator(_passwordController.text) == null;
 
-    final passwordAttempted =
-        _passwordController.text.isNotEmpty &&
-        _confirmPasswordController.text.isNotEmpty;
-
-    return nameChanged || imageChanged || passwordAttempted;
+    return nameChanged || imageChanged || passwordReady;
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -48,65 +58,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {});
   }
 
-  // TODO:
-  // Fetch Logic: Called once when page opens
   Future<void> _fetchProfileData() async {
-    // Simulate Supabase fetch delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final userId = widget.authRepository.currentUser?.id;
+      if (userId == null) return;
 
-    // Assume these values came from: supabase.from('profiles').select().single();
-    if (mounted) {
-      setState(() {
-        _originalName = "Taylor";
-        _originalAvatarUrl =
-            "https://jpniuhsorgjkaqfxjgsr.supabase.co/storage/v1/object/public/avatars/system/default_avatar.png";
+      final profile = await widget.profileRepository.fetchUserProfile(userId);
 
-        _nameController.text = _originalName!;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _originalName = profile.name;
+          _originalAvatarUrl = profile.avatarUrl;
+
+          _nameController.text = _originalName ?? "";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      Utils.showError(e.toString());
     }
   }
 
-  // TODO:
-  // Revert Logic: Reset UI to the "Original" data fetched in initState
   void _cancelEdit() {
     setState(() {
       _nameController.text = _originalName ?? "";
       _passwordController.clear();
       _confirmPasswordController.clear();
-      _pickedImage = null;
+      _selectedImage = null;
     });
   }
 
-  // TODO:
-  // Update Logic: Where you will eventually call Supabase
   Future<void> _updateProfile() async {
-    print('name: ${_nameController.text}');
-    print('pickedImage: ${_pickedImage?.path}');
-    print('newPassword: ${_passwordController.text}');
-    print('confirmPassword: ${_confirmPasswordController.text}');
-
     if (_formKey.currentState!.validate()) {
+      // check image is a valid file type and lower than 5 mb
+      if (_selectedImage != null) {
+        final filePath = _selectedImage!.path.toLowerCase();
+        final fileSize = await _selectedImage!.length(); // size in bytes
+
+        final isInvalidType =
+            !filePath.endsWith('.png') &&
+            !filePath.endsWith('.jpg') &&
+            !filePath.endsWith('.jpeg') &&
+            !filePath.endsWith('.webp');
+
+        if (isInvalidType) {
+          Utils.showError('Only PNG, JPEG, and WebP images are allowed.');
+          return;
+        }
+
+        // Check Size (5MB = 5 * 1024 * 1024 bytes)
+        if (fileSize > 5 * 1024 * 1024) {
+          Utils.showError('Image size must be less than 5MB.');
+          return;
+        }
+      }
+
       setState(() => _isLoading = true);
 
       try {
-        // Logic for User Story #1-1 Acceptance Criteria #4/5 goes here
-        // 1. Upload _localImagePath to Supabase Storage if it exists
-        // 2. Update 'profiles' table with _nameController.text
+        final userId = widget.authRepository.currentUser?.id;
+        if (userId == null) {
+          throw Exception('No authenticated user found');
+        }
 
-        // On Success:
+        final nameToUpdate = _nameController.text.trim() != _originalName
+            ? _nameController.text.trim()
+            : null;
+
+        final passwordToUpdate = _passwordController.text.isNotEmpty
+            ? _passwordController.text
+            : null;
+
+        final resultMessage = await widget.profileRepository.updateUserProfile(
+          userId,
+          nameToUpdate,
+          passwordToUpdate,
+          _selectedImage,
+        );
+
         if (mounted) {
           setState(() {
-            _originalName =
-                _nameController.text; // Update our "revert" baseline
-            _isLoading = false;
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            _selectedImage = null;
+            _formKey.currentState?.reset();
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully!')),
-          );
+
+          Utils.showSuccess(resultMessage);
+          await _fetchProfileData();
         }
       } catch (e) {
-        // Use your ToastUtils.showError here!
+        Utils.showError(e.toString().replaceFirst('Exception: ', ''));
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -115,9 +157,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 75,
+    );
     if (image != null) {
-      setState(() => _pickedImage = File(image.path));
+      setState(() => _selectedImage = File(image.path));
     }
   }
 
@@ -163,7 +210,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show a spinner while the initial fetch happens
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -182,8 +228,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundImage: _pickedImage != null
-                          ? FileImage(_pickedImage!) as ImageProvider
+                      backgroundImage: _selectedImage != null
+                          ? FileImage(_selectedImage!) as ImageProvider
                           : NetworkImage(_originalAvatarUrl ?? ""),
                     ),
                     Positioned(
@@ -204,6 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outlined),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -218,26 +265,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // new password
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
                   labelText: 'New Password',
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
+                  ),
                 ),
-                obscureText: true,
-                validator: (value) => Utils.passwordValidator(value),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return null;
+                  }
+                  return Utils.passwordValidator(value);
+                },
               ),
               const SizedBox(height: 16),
 
               // confirm new password
               TextFormField(
                 controller: _confirmPasswordController,
-                decoration: const InputDecoration(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                obscureText: !_isConfirmPasswordVisible,
+                decoration: InputDecoration(
                   labelText: 'Confirm Password',
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(
+                      () => _isConfirmPasswordVisible =
+                          !_isConfirmPasswordVisible,
+                    ),
+                  ),
                 ),
-                obscureText: true,
                 validator: (value) {
-                  if (value != _passwordController.text) {
-                    return 'Passwords do not match';
+                  if (_passwordController.text.isNotEmpty) {
+                    if (value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
                   }
                   return null;
                 },

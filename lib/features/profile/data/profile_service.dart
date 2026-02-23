@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:happy_family_sim/core/constants.dart';
+import 'package:happy_family_sim/features/profile/data/profile_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileService {
@@ -10,77 +12,64 @@ class ProfileService {
     required String userId,
     String? name,
     String? newPassword,
-    File? pickedImage,
+    File? selectedImage,
   }) async {
-    List<String> updateFields = [];
-    updateFields.add('The following fields were updated: ');
-    final avatarPath = 'users/$userId.png';
+    List<String> updatedFields = [];
+    final Map<String, dynamic> newProfile = {};
 
-    // Upload the file to the avatars bucket
-    if (pickedImage != null) {
-      final response = await _supabase.storage
+    if (selectedImage != null) {
+      final avatarPath = 'users/$userId.jpg';
+      await _supabase.storage
           .from('avatars')
           .upload(
             avatarPath,
-            pickedImage,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+            selectedImage,
+            fileOptions: const FileOptions(
+              cacheControl: '0',
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
           );
 
-      if (response.isEmpty) {
-        throw Exception('File upload failed');
-      }
+      newProfile['avatar_path'] = avatarPath;
+      updatedFields.add('• Avatar');
     }
 
-    // name and profiles table
-    if (name != null && pickedImage != null) {
-      await _supabase
-          .from('profiles')
-          .update({'name': name, 'avatar_path': avatarPath})
-          .eq('id', userId);
+    // name
+    if (name != null) {
+      newProfile['name'] = name;
+      updatedFields.add('• Name');
+    }
 
-      updateFields.add('• Name');
-      updateFields.add('• Avatar');
-    } else if (name != null) {
-      await _supabase.from('profiles').update({'name': name}).eq('id', userId);
-
-      updateFields.add('• Name');
-    } else if (pickedImage != null) {
-      await _supabase
-          .from('profiles')
-          .update({'avatar_path': avatarPath})
-          .eq('id', userId);
-
-      updateFields.add('• Avatar');
+    if (newProfile.isNotEmpty) {
+      await _supabase.from('profiles').update(newProfile).eq('id', userId);
     }
 
     // password and auth
     if (newPassword != null) {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('No authenticated user found');
-      }
-
       await _supabase.auth.updateUser(UserAttributes(password: newPassword));
-
-      updateFields.add('• Password');
+      updatedFields.add('• Password');
     }
 
-    if (updateFields.length == 1) {
+    if (updatedFields.isEmpty) {
       return 'No fields were updated.';
     } else {
-      return updateFields.join('\n');
+      return 'The following fields were updated:\n${updatedFields.join('\n')}';
     }
   }
 
-  Future<Map<String, dynamic>> fetchProfileService({
-    required String userId,
-  }) async {
-    final profileData = await _supabase
+  Future<ProfileModel> fetchProfileService({required String userId}) async {
+    final data = await _supabase
         .from('profiles')
         .select()
         .eq('id', userId)
         .single();
 
-    return profileData;
+    final String path = data['avatar_path'] ?? Constants.defaultAvatarPath;
+    final baseUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+    final String avatarUrl =
+        '$baseUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+
+    return ProfileModel.fromJson(data, avatarUrl);
   }
 }
