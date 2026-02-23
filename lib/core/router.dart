@@ -68,8 +68,11 @@ GoRouter createRouter(
     StatefulShellBranch(
       routes: [
         GoRoute(
-          path: '/child/game',
-          builder: (context, state) => const GameScreen(),
+          path: '/parent/profile',
+          builder: (context, state) => ProfileScreen(
+            authRepository: authRepository,
+            profileRepository: profileRepository,
+          ),
         ),
       ],
     ),
