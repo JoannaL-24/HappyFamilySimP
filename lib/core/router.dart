@@ -3,6 +3,7 @@ import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/widgets/main_wrapper.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/ui/login_view.dart';
+import 'package:happy_family_sim/features/auth/ui/forgot_password_view.dart';
 import 'package:happy_family_sim/features/auth/ui/signup_view.dart';
 import 'package:happy_family_sim/features/auth/ui/welcome_view.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
@@ -60,7 +61,7 @@ GoRouter createRouter(
     StatefulShellBranch(
       routes: [
         GoRoute(
-          path: '/chlid/game',
+          path: '/child/game',
           builder: (context, state) => const GameScreen(),
         ),
       ],
@@ -113,6 +114,10 @@ GoRouter createRouter(
             path: 'game',
             builder: (context, state) => const GameScreen(),
           ),
+          GoRoute(
+          path: 'forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen(),
+        ),
         ],
       ),
       if (userRole != Constants.guestRole)

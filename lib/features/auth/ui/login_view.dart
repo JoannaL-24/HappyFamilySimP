@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -135,7 +136,9 @@ class _LoginScreenState extends State<LoginScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {}, // TODO: forgot password user story
+                onPressed: () {
+                  context.go('/forgot-password');
+                }, // TODO: forgot password user story
                 child: const Text('Forgot Password?'),
               ),
             ),
