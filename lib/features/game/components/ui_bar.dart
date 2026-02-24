@@ -56,14 +56,14 @@ class StatBar extends PositionComponent {
 
 class UiBar extends PositionComponent {
   late final StatBar fullnessBar;
-  late final StatBar hydrationBar;
+  late final StatBar happinessBar;
   late final StatBar cleanlinessBar;
 
   int get fullness => fullnessBar.value;
   set fullness(int v) => fullnessBar.value = v.clamp(0, 100);
 
-  int get hydration => hydrationBar.value;
-  set hydration(int v) => hydrationBar.value = v.clamp(0, 100);
+  int get happiness => happinessBar.value;
+  set happiness(int v) => happinessBar.value = v.clamp(0, 100);
 
   int get cleanliness => cleanlinessBar.value;
   set cleanliness(int v) => cleanlinessBar.value = v.clamp(0, 100);
@@ -80,8 +80,8 @@ class UiBar extends PositionComponent {
       position: Vector2(0, 0),
     );
 
-    hydrationBar = StatBar(
-      label: 'HYDR',
+    happinessBar = StatBar(
+      label: 'HAPP',
       barColor: const Color(0xFF2196F3),
       position: Vector2(0, spacing),
     );
@@ -92,7 +92,7 @@ class UiBar extends PositionComponent {
       position: Vector2(0, spacing * 2),
     );
 
-    addAll([fullnessBar, hydrationBar, cleanlinessBar]);
+    addAll([fullnessBar, happinessBar, cleanlinessBar]);
 
     return super.onLoad();
   }
