@@ -1,0 +1,760 @@
+﻿Happy Family Sim
+
+
+Sprint 1 Planning Document
+Team 21: Joanna Lin, Taylor Huang, William Hou, Zoey Lu
+________________
+
+
+Sprint Overview:
+
+
+Sprint 1 focuses on establishing the foundational architecture and core loop of the Happy Family Sim application. The primary objective is to implement the basic structures of our codebase, such as setting up the database, user authentication/account creation, and the core of the game renderer. Key deliverables include:
+* Infrastructure Setup: Establishing the connection between the Flutter mobile client and the Supabase backend.
+* Parent Management Tools: Enabling parents to create custom tasks, assign them to specific children, and manage their family profiles.
+* Child Experience: Developing the initial Flame game engine environment where children can view their virtual creatures and track accumulated resource rewards like food and water.
+* Game Core: Implementing database synchronization so that task approvals reflect in the child’s inventory and the game environment. Also implementing the game renderer for our game environment.
+By the end of this sprint, the team aims to have a functional pipeline where a parent can assign a chore and a child can see their creature within the integrated game engine.
+Scrum Master: Joanna Lin
+
+
+Meeting Schedule: MWF at 7 PM
+
+
+Risks and Challenges:
+* Finding suitable art assets and/or drawing them ourselves
+* Learning Flutter, Supabase, and other frameworks since none of us have used them before
+* Learning how to write a game because most people in the team have not before.
+* Learning how to integrate a game into a mobile app, because our app is not purely game-based nor a standard mobile app.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Current Sprint Detail
+
+
+User Account & Authentication:
+
+
+User Story #1-1 
+As a parent, I would like to create a new parent account.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Set up and connect Supabase with Flutter
+	4 Hrs
+	Taylor
+	2
+	Create Parent schema in the database
+	1 Hrs
+	Taylor
+	3
+	Create api endpoint for creating a parent account
+	6 Hrs
+	Taylor
+	4
+	Create UI for account creation
+	2 Hrs
+	Taylor
+	5
+	Integrate frontend and backend for this logic
+	1 Hrs
+	Taylor
+	6
+	Testing/Manually test
+	2 Hrs
+	Taylor
+	
+
+Acceptance criteria:
+1. Given the user selects creating an account, then the user sees all required input fields (Email, Password, and a Name field) and a "Create Account" submission button.
+2. Given I enter a valid and unique email address, a secure password, and my name, when I submit the account creation form, then a new parent account is successfully created in the Supabase database, and I am redirected to the login page.
+3. Given I leave any required field blank (e.g., Email or Password), when I submit the form, then an error message is displayed for the missing field, and the account is not created.
+4. Given I enter an email address that is already registered in the system, when I submit the form, then a specific error message is displayed (e.g., "Account already exists"), and the account is not created.
+5. Given I enter a password that does not meet the minimum security requirements (e.g. length of 8 and at least one uppercase, lowercase letter, numeric number, and one special character) or if a "Confirm Password" field is implemented and the values do not match, when I submit the form, then an appropriate error message is displayed, and the account is not created.
+
+
+________________
+
+
+User Story #1-2
+As a parent, I would like to securely log in using email and a password.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create UI for parent logging in, which contains fields for email, account, and also an option for “forget password.”
+	3 Hrs
+	
+
+Zoey
+	2
+	Connect UI with Supabase API endpoint
+	2 Hrs
+	Zoey
+	3
+	Implement a system that checks the authentication of the account through Supabase API
+	4 Hrs
+	Zoey
+	4
+	Depending on the result of the authentication, redirect the user to the home page or hint the user for the correct authentication (incorrect password or account does not exist)
+	1 Hrs
+	
+
+Zoey
+	5
+	Manually test success and failure of login and ensure the database and the result of authentication align
+	2 Hrs
+	Zoey
+	
+
+Acceptance criteria:
+1. Given that the UI is implemented correctly, I, as a parent, should be able to enter my email and password on the login page and submit the login request.
+2. Given that the UI is implemented correctly, I, as a parent, should be able to click on the “forgot password” option from the login page and be redirected appropriately.
+3. Given that the connection to the Supabase API is implemented correctly, I, as a parent with a valid account, should be successfully authenticated when I enter the correct email and password.
+4. Given that the authentication system is implemented correctly, I, as a parent who enters an incorrect password or a non-existent account, should be notified that the authentication failed and should not be logged in.
+5. Given that authentication is successful, I, as a parent, should be redirected to the home page.
+________________
+
+
+User Story #1-3
+As a parent, I would like to securely log out of my account.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create an api endpoint for logging out of the account
+	2 Hrs
+	Taylor
+	2
+	Create log out UI
+	1 Hrs
+	Taylor
+	3
+	Redirect to the login page after logging out
+	1 Hrs
+	Taylor
+	4
+	Clear the session and local data
+	1 Hrs
+	Taylor
+	5
+	Test manually
+	1 Hrs
+	Taylor
+	
+
+Acceptance criteria:
+1. Given the parent is logged into the application, then a clearly labeled "Log Out" option is under the profile page area.
+2. Given the parent opts to log out, then they are redirected to the login page.
+3. Given the parent has successfully logged out and is viewing the Login screen, then the application's primary navigation bar must be completely hidden from view.
+________________
+
+
+User Story #1-4
+As a parent, I would like to reset my password if I forget it.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create UI for “forget password”: prompt for email, check authentication code, reset password
+	3 Hrs
+	
+
+Zoey
+	2
+	Implement verification by communicating with Supabase database to check if the authentication exists
+	1 Hrs
+	
+
+Zoey
+	3
+	Implement a system that composes and sends emails for password resets utilizing Supabase API
+	4 Hrs
+	
+
+Zoey
+	4
+	Implement a system to verify the authentication code. Code expired in 10 minutes.
+	4 Hrs
+	Zoey
+	5
+	Test and debug the verification and email composing systems to ensure the system reflects correctly with the corresponding accounts
+	3 Hrs
+	
+
+Zoey
+	
+
+Acceptance criteria:
+1. Given that the “forgot password” UI is implemented correctly, I, as a parent, should be able to enter my email address and request a password reset.
+2. Given that the system communicates with the Supabase database correctly, I, as a parent with an existing account, should have my account verified before a password reset is initiated.
+3. Given that the email sending system using the Supabase API is implemented correctly, I, as a parent with a valid account, should receive an email containing an authentication code or reset instructions.
+4. Given that the authentication code verification system is implemented correctly, I, as a parent, should be able to enter the authentication code and successfully reset my password before the code expires.
+5. Given that the authentication code has expired, I, as a parent, should be notified that the code is no longer valid and be required to request a new password reset.
+
+
+
+________________
+
+
+User Story #1-5
+As a parent, I would like to manage/edit my parent profile (name, profile pic, password).
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create profile page UI.
+	3 Hrs
+	Taylor
+	2
+	Create update profile information api endpoint (name and password).
+	2 Hrs
+	Taylor
+	3
+	For profile pic, use either base64 or file path (test which one is better).
+	3 Hrs
+	Taylor
+	4
+	Move log out UI to profile page.
+	1 Hrs
+	Taylor
+	5
+	Manual Test
+	2 Hrs
+	Taylor
+	
+
+Acceptance criteria:
+   1. Given the parent is logged into the application, when they navigate to the Profile Management page, then their current profile information (name, profile picture) is displayed in editable fields, the new password fields are initially empty, and the single "Save" button is initially disabled.
+   2. Given the parent modifies any editable field (Name, Profile Picture, or the Password fields), then the "Save" button becomes enabled. If the user reverts all changes to the original values, the button becomes disabled again.
+   3. Given the parent has made one or more valid changes to their profile, when they click the single enabled "Save" button, then all valid changes are successfully updated with a visualize UI box to show what has been changed.
+   4. Given the parent enters values in the "New Password" and "Confirm New Password" fields, when they click "Save," then the system verifies the passwords match each other, the new password meets the minimum security requirements. If either condition fails, the save is blocked, and a clear validation message is displayed for the specific issue.
+
+
+
+
+
+
+________________
+
+
+User Story #1-6
+As a parent, I would like to view a list of all linked child accounts.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create UI for listing children
+	2 Hrs
+	Taylor
+	2
+	Create an api endpoint to fetch children list.
+	2 Hrs
+	Taylor
+	3
+	Manual Test
+	2 Hrs
+	Taylor
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in, when they navigate to the “Children” section, then the system displays a list UI of all child accounts linked to that parent.
+   2. Given the parent has no linked child accounts, when they open the linked children page, then the UI displays an empty state message indicating no children are linked yet.
+   3. Given the parent refreshes the page or revisits later, when the UI fetches the children list again, then the displayed list matches the current database state for that parent.
+
+
+________________
+
+
+User Story #1-7
+As a parent, I would like to create a new child account for my child.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create a UI for adding a child.
+	1 Hrs
+	Taylor
+	2
+	Create schema for children
+	2 Hrs
+	Taylor
+	3
+	Generate a random 6-digit code upon the creation of a child. The same parent should not have children with the same code.
+	3 Hrs
+	Taylor
+	5
+	Insert the new child information into the database.
+	1 Hrs
+	Taylor
+	6
+	Manual test
+	2 Hrs
+	Taylor
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in and on the “Add Child” section, when they enter the required child information and click “Create,” then a new child account is created and the UI with the child appearing in the linked children list.
+   2. Given the parent submits the “Add Child” form with missing or invalid inputs (e.g. empty child name), when they click “Create,” then the system blocks submission and displays clear validation messages indicating what needs to be corrected.
+   3. Given a parent successfully creates a child account, when the child record is generated, then the system creates a random 6-digit code for that child.
+   4. Given the child account creation succeeds, when the system saves the record, then the child information (including the generated 6-digit code and the parent’s identifier) is inserted into the database and remains consistent after refresh.
+________________
+
+
+User Story #1-9
+As a child, I would like to securely log in using the same email as my parent account and a 6-digit code provided by my parents.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create UI for children logging in, which contains fields for email, account.
+	3 Hrs
+	
+
+Zoey
+	2
+	Connect UI with the Supabase API endpoint
+	2 Hrs
+	Zoey
+	3
+	Implement a system that checks the authentication of the account through Supabase API
+	4 Hrs
+	Zoey
+	4
+	Depending on the result of the authentication, redirect the user to the home page or hint the user for the correct authentication (incorrect password or account does not exist)
+	1 Hrs
+	
+
+Zoey
+	5
+	Manually test success and failure of login and ensure the database and the result of authentication align
+	2 Hrs
+	
+
+Zoey
+	
+
+Acceptance criteria:
+   1. Given that the children login UI is implemented correctly, I, as a child, should be able to enter the email associated with my parent’s account and a 6-digit code provided by my parent.
+   2. Given that the UI is connected to the Supabase API correctly, I, as a child, should be able to submit my login information for authentication.
+   3. Given that the authentication system through the Supabase API is implemented correctly, I, as a child with a valid email and correct 6-digit code, should be successfully authenticated.
+   4. Given that the authentication information is incorrect or the account does not exist, I, as a child, should be notified that the login failed and should not be logged in.
+   5. Given that authentication is successful, I, as a child, should be redirected to the home page.
+
+
+________________
+Task Creation & Assignment (Parent):
+
+
+User Story # 2-1 
+As a parent, I would like to create a custom task with a unique title and description.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Set up database schema and API for task management
+	4 Hrs
+	Joanna
+	2
+	Design and create UI for the task task creation interface
+	4 Hrs
+	Joanna
+	3
+	Create an logistics that save inputted information into database
+	2 Hrs
+	Joanna
+	4
+	Test: debug and test functionalities with manual testing (checking database reflect)
+	2 Hrs
+	Joanna
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in and is on the “Create Task” page, when they enter a title and description in the required fields and click “Create/Save,” then the system creates a new task and returns to the task list with the new task visible.
+   2. Given the parent leaves the title field empty or enters invalid/malformed input, when they click “Create/Save,” then the system blocks creation and highlights the field(s) needing correction with a clear validation message.
+   3. Given a task is successfully created, when the system saves the task, then the task record is stored in the database with the correct parent identifier and includes the exact title and description entered.
+
+
+________________
+
+
+User Story # 2-2
+As a parent, I would like to set a specific due date for a task.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create UI with dropdown of dates
+	2 Hrs
+	Joanna
+	2
+	Create UI and logistics that allow users to choose relative date for the due date
+	1 Hrs
+	Joanna
+	3
+	Update database relatively with chosen date
+	1 Hrs
+	Joanna
+	4
+	Test: debug and test functionalities with manual testing (checking database reflect)
+	1 Hrs
+	Joanna
+	
+
+Acceptance criteria:
+   1. Given the parent is creating or editing a task and the due date section is visible, when they open the due date control, then they can select a specific calendar date from a date dropdown.
+   2. Given the parent is creating or editing a task, when they choose a relative due date option (e.g., “Tomorrow,” “In 3 days,” “Next week”), then the system automatically calculates and displays the corresponding specific calendar date as the due date.
+   3. Given the parent selects a due date earlier than today (or an invalid date), when they attempt to save the task, then the system blocks submission and displays a validation message indicating the due date must be valid.
+   4. Given the parent clicks “Save” with a valid due date selected, when the task is saved, then the due date is stored in the database correctly for that task and reflects the chosen date (including the computed date for relative selections).
+   5. Given the task is saved with a due date, when the parent returns to the task details or task list view, then the due date displayed matches the value stored in the database and remains consistent across reloads.
+
+
+________________
+
+
+User Story # 2-5
+As a parent, I would like to assign a task to a single child.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	List all children linked with the parent
+	1 Hrs
+	Joanna
+	2
+	Create UI with the listed children and be able to choose from the list
+	2 Hrs
+	Joanna
+	3
+	Update database relatively for both parent and child
+	2 Hrs
+	Joanna
+	4
+	Test: debug and test functionalities with manual testing (checking database reflect)
+	1 Hrs
+	Joanna
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in and has one or more children linked to their account, when the parent opens the “Assign Task” control, then the system displays a list of only the children linked to that parent.
+   2. Given the list of linked children is displayed, when the parent selects one child from the list and confirms the selection, then the task becomes assigned to that selected child and the UI reflects the chosen assignee.
+   3. Given a task is assigned to a child, when the assignment is saved, then the database stores the relationship so the task is linked to exactly that child.
+   4. Given the parent attempts to assign a task without selecting a child, when they click “Save/Assign,” then the system blocks the action and displays a validation message indicating a child must be selected.
+   5. Given a task has been successfully assigned to a child, when the parent refreshes or reopens the task details page, then the assigned child remains correctly displayed and matches what is stored in the database.
+
+
+________________
+
+
+User Story # 2-10
+As a parent, I would like to edit the details of an existing task.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create edit UI in task list and edit page, including change
+	3 Hrs
+	Joanna
+	2
+	Update database with the edited information
+	2 Hrs
+	Joanna
+	3
+	Test: debug and test functionalities with manual testing and unit test (checking database and UI reflect)
+	2 Hrs
+	Joanna
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in and viewing the task list, when they select “Edit” on an existing task, then the system opens an edit interface (inline or edit page) with the task’s current details pre-filled.
+   2. Given the parent is on the task edit interface, when they modify one or more editable fields (e.g., title, description, due date, assignee) and click “Save,” then the system updates the task and displays a success confirmation.
+   3. Given the parent enters invalid or malformed updates (e.g., empty required fields), when they click “Save,” then the system blocks the update and displays clear validation messages indicating what must be corrected.
+   4. Given the parent successfully saves edits to a task, when the save completes, then the updated task details are persisted in the database and the task list/edit page reflects the new information immediately.
+
+
+________________
+
+
+User Story #2-11
+As a parent, I would like to delete an existing task.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Create delete UI in task list and confirmation check for the deletion
+	2 Hrs
+	Joanna
+	2
+	Delete all information related with the specific task in  database
+	2 Hrs
+	Joanna
+	3
+	Test: debug and test functionalities with manual testing (checking database and UI reflect)
+	2 Hrs
+	Joanna
+	
+
+Acceptance criteria:
+   1. Given the parent is logged in and viewing the task list, when they click the “Delete” option for a specific task, then the system displays a confirmation prompt that clearly identifies the task being deleted.
+   2. Given the delete confirmation prompt is displayed, when the parent selects “Cancel,” then the task is not deleted and remains visible in the task list with no database changes.
+   3. Given the delete confirmation prompt is displayed, when the parent confirms deletion, then the system removes the task from the task list.
+   4. Given a task deletion is confirmed, when the system processes the request, then all database records associated with that specific task (including the task record and any related links such as assignment/proof if applicable) are removed so no orphaned task data remains. 
+
+
+________________
+
+
+User Story # 2-13
+As a parent, I would like to view a list of all created and active tasks.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Design and create task list UI
+	3 Hrs
+	Joanna
+	2
+	Access database and list all tasks associated with the parent account
+	1 Hrs
+	Joanna
+	3
+	Ensure the task list UI real-time reflect all actions created, such as adding new task and deleting a task
+	2 Hrs
+	Joanna
+	4
+	Test: debug and test functionalities with manual testing (checking database and UI reflect)
+	1 Hrs
+	Joanna
+	
+
+Acceptance criteria:[a]
+   1. Given the parent is logged in, when they navigate to the task list page, then the system displays a list UI showing all tasks associated with that parent account.
+   2. Given the parent creates a new task successfully, when the creation action completes, then the new active task appears in the task list without requiring the parent to manually refresh the page.
+   3. Given the parent deletes an existing task successfully, when the deletion action completes, then the deleted task is removed from the task list.
+________________
+Gamification & Creature Care:
+
+
+User Story #5-1
+As a child, I would like to see my total accumulated amount for each resource type (Water, Food, Hygiene, etc).
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Design and export custom icons for each resource type (Food, Water, Hygiene).
+	5 Hrs
+	Zoey
+	2
+	Create a reusable ResourceCounter widget that takes an icon and resource values.
+	5 Hrs
+	William
+	3
+	Implement the inventory overlay/bar at the top of the Child Dashboard.
+	5 Hrs
+	William
+	4
+	Set up a Riverpod provider to listen to real-time changes in the Supabase Resource table.
+	5 Hrs
+	William
+	5
+	Create a "Resource Updated" animation (e.g., a subtle pulse or bounce) when values change.
+	5 Hrs
+	William
+	6
+	Unit Test: Verify that the UI correctly reflects the total sum of resources from the database.
+	3 Hrs
+	William
+	
+
+Acceptance criteria:
+      1. Given the child is on the dashboard and a parent approves a task, when the database update occurs, then the on-screen counter for that specific resource must update automatically without a manual page refresh.
+      2. Given the inventory overlay is active, when the child views their resources, then each numerical amount must be paired with its specific custom icon (Food, Water, or Hygiene) to ensure clarity for child users.
+      3. Given a resource is successfully added to the child's inventory, when the value changes, then the UI must trigger a visual "pulse" or animation to provide immediate feedback.
+      4. Given the child has accumulated resources, when they navigate between the "Chores" list and the "Game" environment, then the total resource amounts displayed in the inventory bar must remain consistent.
+      5. Given a child has not yet earned a specific resource type, when they view the inventory bar, then the counter should display "0" alongside the icon to maintain layout consistency.
+
+
+
+
+
+
+User Story #5-2
+As a child, I would like to access the game environment to view my virtual creature.
+
+
+#
+	Task Description
+	Estimated Time
+	Task Owner
+	1
+	Initialize the Flame Game class and set up the CameraComponent for a fixed-room perspective. 
+	4 Hrs
+	William
+	2
+	Create a Supabase query to fetch the specific CreatureOccurrence data (type, name, current levels) for the logged-in child. 
+	4 Hrs
+	William
+	3
+	Map database strings to asset paths. 
+	5 Hrs
+	William
+	5
+	Implement back to front renderer for rendering the background items and the game creature, basically all the in-game elements.
+	6 Hrs
+	William
+	6
+	Unit Test: Verify that switching between the "Chores" and "Game" tabs preserves the creature's current state and animations. 
+	3 Hrs
+	
+
+William
+	
+
+Acceptance criteria:
+      1. Given the user is logged into a child account, when they select the "Game" tab from the navigation bar, then the Flame game engine must initialize and render the virtual environment without any noticeable delays.
+      2. Given the game environment has loaded, when the creature is displayed, then its visual state must accurately reflect the status data fetched from the Supabase database.
+      3. Given the child is viewing their creature, when they switch to the "Chores" tab and then back to the "Game" tab, then the creature’s position, current animation, and status levels must be preserved.
+      4. Given the virtual environment is active, when the creature's status drops below a specific threshold, then the Flame engine must automatically trigger the corresponding "sad" or "needy" visual animation. 
+
+
+
+
+
+
+Current Total Hours: 182 Hrs
+
+
+Name
+	Estimated Time
+	Taylor
+	48 Hrs
+	William
+	45 Hrs
+	Zoey
+	44 Hrs
+	Joanna
+	43 Hrs
+	
+
+________________
+
+
+Remaining Backlog
+
+
+User Account & Authentication[b]:
+      1. As a parent, I would like to create a new parent account.
+      2. As a parent, I would like to securely log in using email and a password.
+      3. As a parent, I would like to securely log out of my account.
+      4. As a parent, I would like to reset my password if I forget it.
+      5. As a parent, I would like to manage/edit my parent profile.
+      6. As a parent, I would like to view a list of all linked child accounts.
+      7. As a parent, I would like to create a new child account for my child.
+      8. As a parent, I would like to link a child's account to my parent profile.
+      9. As a child, I would like to securely log in using the same email as my parent account and a 6-digit code provided by my parents.
+Task Creation & Assignment (Parent):
+      1. As a parent, I would like to create a custom task with a unique title and detailed description.
+      2. As a parent, I would like to set a specific due date for a task.
+      3. As a parent, I would like to set a task to repeat on a daily, weekly, or custom frequency (recurring task).
+      4. As a parent, I would like to set a task as a one-off, non-recurring task.
+      5. As a parent, I would like to assign a task to a single child.
+      6. As a parent, I would like to assign a task to multiple children simultaneously.
+      7. As a parent, I would like to specify the type of resource (e.g., Water, Food, Hygiene) as a reward.
+      8. As a parent, I would like to specify the amount of the resource reward for task completion.
+      9. As a parent, I would like to be able to require photo evidence for a task to be marked as complete.
+      10. As a parent, I would like to edit the details of an existing task.
+      11. As a parent, I would like to delete an existing task.
+      12. As a parent, I would like to create and name custom categories to organize tasks (e.g., "School," "Hygiene").
+      13. As a parent, I would like to view a list of all created and active tasks.
+      14. As a parent, I would like to choose a task to assign from a list of preset-tasks.
+Task Viewing & Submission (Child):
+      1. As a child, I would like to view a list of all tasks currently assigned to me.
+      2. As a child, I would like the list of tasks to display the due date and remaining time.
+      3. As a child, I would like to select a task to view its full title, description, and required reward.
+      4. As a child, I would like to mark a task as complete to submit it for parent approval.
+      5. As a child, I would like to take and upload a new photo as evidence for a required task.
+      6. As a child, I would like to retake and upload a new photo if they don’t like it.
+      7. As a child, I would like to receive an immediate confirmation that my task submission is pending approval.
+      8. As a child, I would like to receive notification when a task is going to expire in an hour.
+Task Approval & History (Parent & Child):
+      1. As a parent, I would like to view a dashboard listing all task submissions pending my approval.
+      2. As a parent, I would like to view the submitted photo evidence for a task.
+      3. As a parent, I would like to approve a completed task submission.
+      4. As a parent, I would like to reject a completed task submission.
+      5. As a parent, I would like to enter text feedback when rejecting a task submission.
+      6. As a child, I would like to receive a notification when a task submission is approved.
+      7. As a child, I would like to receive a notification, including parent feedback, when a task submission is rejected.
+      8. As a parent/child, I would like to view a historical log of all tasks completed, missed, or rejected.
+      9. As a parent, I would like to view a report showing the task completion rate for each child over the last week/month.
+      10. As a parent, I would like to view simple statistics of task completions, figuring what task is complete/miss the most to adjust reward when assigning tasks.
+Gamification & Creature Care:
+      1. As a child, I would like to see my total accumulated amount for each resource type (Water, Food, Hygiene, etc).
+      2. As a child, I would like to access the game environment to view my virtual creature.
+      3. As a child, I would like to select a resource type to apply to my creature/environment.
+      4. As a child, I would like to see my creature's hygiene, hunger, or hydration status increase when a resource is applied.
+      5. As a child, I would like to see my creature's status (hygiene, hunger, hydration) slowly deplete over time.
+      6. As a child, I would like to see visual feedback (e.g., an animated "sad" state) when the creature's status drops too low.
+      7. As a child, I would like to see my creature growing when a certain consistency of creature’s status is maintained.
+      8. As a child, I would like to be able to open a mystery box (cosmetic items, resources, etc) under certain conditions.
+      9. As a parent, I would like to view my child’s virtual creature and its current status levels.
+
+
+[a]Given the task list is displayed, when tasks are retrieved from the database, then only tasks that are marked active (not deleted/archived/completed, depending on your definition) appear in the list.
+[b]log out for child

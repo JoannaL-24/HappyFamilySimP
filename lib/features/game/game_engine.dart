@@ -8,8 +8,14 @@ import 'components/background.dart';
 import 'components/furniture_sprite.dart';
 import 'components/pet.dart';
 import 'components/ui_bar.dart';
+import 'data/models.dart';
 
 class FamilyPetGame extends FlameGame with KeyboardEvents {
+  FamilyPetGame({this.creature, this.resources});
+
+  Creature? creature;
+  Resources? resources;
+
   late UiBar uiBar;
   late Background background;
   late Pet pet;
@@ -22,6 +28,14 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
 
     uiBar = UiBar();
     camera.viewport.add(uiBar);
+
+    // Initialize stat bars from DB creature data if available
+    final c = creature;
+    if (c != null) {
+      uiBar.fullness = c.fullness;
+      uiBar.happiness = c.happiness;
+      uiBar.cleanliness = c.cleanliness;
+    }
 
     // background
     background = Background(theme: 'Classic', index: 1)..position = Vector2(100, 50);
@@ -73,7 +87,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
       if (event.logicalKey == LogicalKeyboardKey.digit1) {
         uiBar.fullness -= 10;
       } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
-        uiBar.hydration -= 10;
+        uiBar.happiness -= 10;
       } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
         uiBar.cleanliness -= 10;
       }
