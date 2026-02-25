@@ -11,44 +11,59 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  try {
-    const { childName, childEmail, loginCode } = await req.json();
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
+  let childId: string | null = null;
+
+  try {
+    const { childName, childEmail, sixDigitCode, role, avatarPath, parentId } =
+      await req.json();
 
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email: childEmail,
-        password: loginCode,
+        password: sixDigitCode,
         email_confirm: true,
-        user_metadata: { role: "child" },
       });
 
     if (authError) throw authError;
 
-    const childId = authUser.user.id;
+    childId = authUser.user.id;
 
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
         id: childId,
         name: childName,
-        role: "child",
-        login_code: loginCode,
-        parent_email: childEmail,
-        avatar_path: "system/default_avatar.png",
+        role: role,
+        avatar_path: avatarPath,
+        code: sixDigitCode,
       });
 
     if (profileError) throw profileError;
 
-    return new Response(JSON.stringify({ success: true, childId: childId }), {
+    const { error: linkError } = await supabaseAdmin
+      .from("family_links")
+      .insert({
+        parent_id: parentId,
+        child_id: childId,
+      });
+
+    if (linkError) throw linkError;
+
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
+    // rollback
+    if (childId) {
+      await supabaseAdmin.auth.admin.deleteUser(childId);
+    }
+
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

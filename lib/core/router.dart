@@ -6,6 +6,7 @@ import 'package:happy_family_sim/features/auth/ui/login_view.dart';
 import 'package:happy_family_sim/features/auth/ui/signup_view.dart';
 import 'package:happy_family_sim/features/auth/ui/welcome_view.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
+import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/ui/profile_view.dart';
@@ -15,6 +16,7 @@ import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
 GoRouter createRouter(
   AuthRepository authRepository,
   ProfileRepository profileRepository,
+  ManageRepository manageRepository,
   String userRole,
   Function(String) onLoginSucess,
 ) {
@@ -31,7 +33,10 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/management',
-          builder: (context, state) => const ManageChildrenScreen(),
+          builder: (context, state) => ManageChildrenScreen(
+            authRepository: authRepository,
+            manageRepository: manageRepository,
+          ),
         ),
       ],
     ),
