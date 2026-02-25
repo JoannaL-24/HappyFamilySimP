@@ -6,6 +6,8 @@ import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/router.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_service.dart';
+import 'package:happy_family_sim/features/management/data/manage_repository.dart';
+import 'package:happy_family_sim/features/management/data/manage_service.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/data/profile_service.dart';
 import 'package:logger/logger.dart';
@@ -35,11 +37,14 @@ Future<void> main() async {
   final authRepository = AuthRepository(authService);
   final profileService = ProfileService(supabase);
   final profileRepository = ProfileRepository(profileService);
+  final manageService = ManageService(supabase);
+  final manageRepository = ManageRepository(manageService);
 
   runApp(
     HappyFamilyApp(
       authRepository: authRepository,
       profileRepository: profileRepository,
+      manageRepository: manageRepository,
     ),
   );
 }
@@ -47,10 +52,13 @@ Future<void> main() async {
 class HappyFamilyApp extends StatefulWidget {
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final ManageRepository manageRepository;
+
   const HappyFamilyApp({
     super.key,
     required this.authRepository,
     required this.profileRepository,
+    required this.manageRepository,
   });
 
   @override
@@ -123,6 +131,7 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
       routerConfig: createRouter(
         widget.authRepository,
         widget.profileRepository,
+        widget.manageRepository,
         _currentRole,
         _updateRole,
       ),

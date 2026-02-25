@@ -31,7 +31,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       try {
         final isParent = formKey == _parentFormKey;
-        final email = _emailController.text.trim();
+        final email = isParent
+            ? _emailController.text.trim()
+            : Utils.getChildEmail(
+                _emailController.text.trim(),
+                _childCodeController.text,
+              );
         final password = isParent
             ? _passwordController.text
             : _childCodeController.text;

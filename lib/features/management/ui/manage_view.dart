@@ -1,9 +1,19 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:happy_family_sim/core/utils.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 
 class ManageChildrenScreen extends StatefulWidget {
-  const ManageChildrenScreen({super.key});
+  final AuthRepository authRepository;
+  final ManageRepository manageRepository;
+  const ManageChildrenScreen({
+    super.key,
+    required this.authRepository,
+    required this.manageRepository,
+  });
 
   @override
   State<ManageChildrenScreen> createState() => _ManageChildrenScreenState();
@@ -12,32 +22,96 @@ class ManageChildrenScreen extends StatefulWidget {
 class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
   bool _showAllCodes = false;
   final _nameController = TextEditingController();
+  bool _isLoading = true;
 
   final _formKey = GlobalKey<FormState>();
 
-  // fake data
-  final List<Map<String, dynamic>> _children = [
-    {'id': '1', 'name': 'Alice Huang', 'sixDigitCode': '482910'},
-    {'id': '2', 'name': 'Bobby Huang', 'sixDigitCode': '123456'},
-    {'id': '3', 'name': 'Charlie', 'sixDigitCode': '987654'},
-  ];
+  List<Map<String, dynamic>> _children = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchChildren();
+  }
+
+  Future<void> _fetchChildren() async {
+    setState(() => _isLoading = true);
+    try {
+      final userId = widget.authRepository.currentUser?.id;
+      if (userId == null) return;
+
+      final result = await widget.manageRepository.fetchChildrenData(userId);
+      
+      // print(result);
+
+      if (mounted) {
+        setState(() {
+          _children = result;
+        });
+      }
+    } catch (e) {
+      Utils.showError(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _copyToClipboard(String sixDigitCode, String childName) {
     Clipboard.setData(ClipboardData(text: sixDigitCode));
     Utils.showSuccess('Copied $childName\'s code to clipboard!');
   }
 
+  String _generateUniqueCode() {
+    final random = Random();
+    String newCode;
+
+    final existingCodes = _children.map((c) => c['code'].toString()).toSet();
+
+    do {
+      // generates a code between "100000" and "999999"
+      newCode = (random.nextInt(900000) + 100000).toString();
+    } while (existingCodes.contains(newCode));
+
+    return newCode;
+  }
+
   Future<void> _createChildAccount() async {
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text.trim();
 
-      // Logic for account creation goes here
+      final parentUser = widget.authRepository.currentUser;
 
-      if (mounted) {
-        Navigator.pop(context);
-        Utils.showSuccess("$name's profile has been created!");
+      if (parentUser == null || parentUser.email == null) {
+        Utils.showError("Parent session not found. Please log in again.");
+        return;
+      }
 
-        _nameController.clear();
+      final String sixDigitCode = _generateUniqueCode();
+      final String childEmail = Utils.getChildEmail(
+        parentUser.email!,
+        sixDigitCode,
+      );
+
+      setState(() => _isLoading = true);
+
+      try {
+        await widget.manageRepository.addChild(
+          name,
+          childEmail,
+          sixDigitCode,
+          parentUser.id,
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+          Utils.showSuccess("$name's profile has been created!");
+          _nameController.clear();
+          await _fetchChildren();
+        }
+      } catch (e) {
+        Utils.showError(e.toString().replaceFirst('Exception: ', ''));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -77,7 +151,6 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
               TextFormField(
                 controller: _nameController,
                 autofocus: true,
-                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: 'Child\'s Name',
                   prefixIcon: const Icon(Icons.face_outlined),
@@ -94,17 +167,26 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _createChildAccount,
+                onPressed: _isLoading ? null : _createChildAccount,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Create Child Profile',
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Create Child Profile',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
               const SizedBox(height: 32),
             ],
@@ -132,7 +214,11 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _children.isEmpty ? _buildEmptyState() : _buildChildList(),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _children.isEmpty
+                ? _buildEmptyState()
+                : _buildChildList(),
           ),
         ],
       ),
@@ -151,7 +237,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
       itemBuilder: (context, index) {
         final child = _children[index];
         final childName = child['name']!;
-        final sixDigitCode = child['sixDigitCode']!;
+        final sixDigitCode = child['code']!;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),

@@ -50,6 +50,14 @@ class Utils {
     }
   }
 
+  static String getChildEmail(String parentEmail, String sixDigitCode) {
+    final childEmail = parentEmail.replaceFirst(
+      '@',
+      '+$sixDigitCode@hfs.local',
+    );
+    return childEmail;
+  }
+
   static void showSuccess(String message) {
     Fluttertoast.showToast(
       msg: message,
