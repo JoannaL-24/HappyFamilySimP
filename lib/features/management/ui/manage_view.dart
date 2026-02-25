@@ -236,6 +236,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
         final child = _children[index];
         final childName = child['name']!;
         final sixDigitCode = child['code']!;
+        final avatarUrl = child['avatar_url'];
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -248,9 +249,12 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // avatar
                 CircleAvatar(
-                  backgroundColor: Colors.blue.shade50,
-                  child: Text(child['name']![0]),
+                  backgroundImage: avatarUrl != null
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: avatarUrl == null ? Text(child['name']![0]) : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -262,7 +266,8 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                     ),
                   ),
                 ),
-                // Code Display
+
+                // code display
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -283,7 +288,8 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // Copy Button
+
+                // copy button
                 IconButton(
                   icon: const Icon(Icons.copy, size: 18),
                   onPressed: () => _copyToClipboard(sixDigitCode, childName),

@@ -36,11 +36,7 @@ class ManageRepository {
 
   Future<List<Map<String, dynamic>>> fetchChildrenData(String parentId) async {
     try {
-      final data = await _manageService.fetchChildrenListService(parentId);
-
-      return data.map((item) {
-        return item['profiles'] as Map<String, dynamic>;
-      }).toList();
+      return await _manageService.fetchChildrenListService(parentId);
     } catch (e) {
       logger.e('Error fetching children list', error: e);
       throw Exception('Could not load children. Please try again.');

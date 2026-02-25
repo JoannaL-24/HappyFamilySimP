@@ -45,6 +45,24 @@ class ManageService {
         ''')
         .eq('parent_id', parentId);
 
-    return List<Map<String, dynamic>>.from(response);
+    final List<Map<String, dynamic>> rawList = List<Map<String, dynamic>>.from(
+      response,
+    );
+
+    return rawList.map((item) {
+      final profile = item['profiles'] as Map<String, dynamic>;
+      final String path = profile['avatar_path'] ?? Constants.defaultAvatarPath;
+      final baseUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+      final String avatarUrl =
+          '$baseUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+
+      return {
+        'id': profile['id'],
+        'name': profile['name'],
+        'role': profile['role'],
+        'code': profile['code'],
+        'avatar_url': avatarUrl,
+      };
+    }).toList();
   }
 }
