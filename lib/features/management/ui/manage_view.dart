@@ -41,8 +41,6 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
       if (userId == null) return;
 
       final result = await widget.manageRepository.fetchChildrenData(userId);
-      
-      // print(result);
 
       if (mounted) {
         setState(() {

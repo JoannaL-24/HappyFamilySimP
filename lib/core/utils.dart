@@ -51,11 +51,8 @@ class Utils {
   }
 
   static String getChildEmail(String parentEmail, String sixDigitCode) {
-    final childEmail = parentEmail.replaceFirst(
-      '@',
-      '+$sixDigitCode@hfs.local',
-    );
-    return childEmail;
+    final localPart = parentEmail.split('@').first;
+    return '$localPart+$sixDigitCode@hfs.local';
   }
 
   static void showSuccess(String message) {
