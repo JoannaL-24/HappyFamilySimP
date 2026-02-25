@@ -1,0 +1,11 @@
+project_id = "happy-family-sim"
+
+[edge_runtime]
+enabled = true
+deno_version = 2
+
+[functions.create-child]
+enabled = true
+verify_jwt = true
+import_map = "./functions/create-child/deno.json"
+entrypoint = "./functions/create-child/index.ts"
