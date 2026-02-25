@@ -34,6 +34,13 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
     _fetchChildren();
   }
 
+  Future<void> _onRefresh() async {
+    setState(() {
+      _children = [];
+    });
+    await _fetchChildren();
+  }
+
   Future<void> _fetchChildren() async {
     setState(() => _isLoading = true);
     try {
@@ -209,16 +216,19 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _children.isEmpty
-                ? _buildEmptyState()
-                : _buildChildList(),
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: Column(
+          children: [
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _children.isEmpty
+                  ? _buildEmptyState()
+                  : _buildChildList(),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddChildSheet(context),
@@ -230,6 +240,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
 
   Widget _buildChildList() {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _children.length,
       itemBuilder: (context, index) {
@@ -304,18 +315,28 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.people_outline, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          const Text(
-            'No children added yet.',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+        Center(
+          child: Column(
+            children: [
+              Icon(Icons.people_outline, size: 80, color: Colors.grey.shade300),
+              const SizedBox(height: 16),
+              const Text(
+                'No children added yet.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Pull down to refresh',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
