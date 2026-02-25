@@ -22,11 +22,14 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
   late FurnitureSpriteSheet sheet;
 
   @override
+  Color backgroundColor() => const Color(0xFFf2e9e1);
+
+  @override
   Future<void> onLoad() async {
     camera = CameraComponent.withFixedResolution(width: 200, height: 400)
       ..viewfinder.anchor = Anchor.topLeft;
 
-    uiBar = UiBar();
+    uiBar = UiBar(position: Vector2(10, 9));
     camera.viewport.add(uiBar);
 
     // Initialize stat bars from DB creature data if available
@@ -38,7 +41,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
     }
 
     // background
-    background = Background(theme: 'Classic', index: 1)..position = Vector2(100, 50);
+    background = Background(theme: 'Classic', index: 1)..position = Vector2(100, 45);
     world.add(background);
 
     // in game things
@@ -49,7 +52,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
                                                                                                                                                                     
     world.addAll([
       sheet.createSprite(42, position: Vector2(80, 200)),
-      sheet.createSprite(315, position: Vector2(150, 330), priorityOffset: -15),
+      sheet.createSprite(315, position: Vector2(150, 330), priorityOffset: -17),
       sheet.createSprite(50, position: Vector2(60, 330), priorityOffset: -15),
     ]);
 
@@ -85,11 +88,15 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
     // Debug stat controls
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.digit1) {
-        uiBar.fullness -= 10;
-      } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
         uiBar.happiness -= 10;
-      } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
-        uiBar.cleanliness -= 10;
+        if (uiBar.happiness < 50) {
+          pet.current = PetState.cry;
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
+        uiBar.happiness += 10;
+        if (uiBar.happiness >= 50) {
+          pet.current = PetState.idle;
+        }
       }
     }
     return KeyEventResult.handled;

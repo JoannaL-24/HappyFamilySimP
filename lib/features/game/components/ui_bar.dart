@@ -23,7 +23,7 @@ class StatBar extends PositionComponent {
     // Draw label
     final paragraphBuilder =
         ParagraphBuilder(ParagraphStyle(fontSize: 6, fontFamily: 'monospace'))
-          ..pushStyle(TextStyle(color: const Color(0xFFFFFFFF)))
+          ..pushStyle(TextStyle(color: const Color(0xFF000000)))
           ..addText(label);
 
     final paragraph = paragraphBuilder.build()
@@ -55,6 +55,8 @@ class StatBar extends PositionComponent {
 }
 
 class UiBar extends PositionComponent {
+  UiBar({super.position});
+
   late final StatBar fullnessBar;
   late final StatBar happinessBar;
   late final StatBar cleanlinessBar;
@@ -70,8 +72,6 @@ class UiBar extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
-    position = Vector2(4, 10);
-
     const spacing = 10.0;
 
     fullnessBar = StatBar(

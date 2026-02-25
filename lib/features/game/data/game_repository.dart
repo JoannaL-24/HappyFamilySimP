@@ -39,7 +39,7 @@ class GameRepository {
   }
 
   /// Live stream of resource updates — emits whenever the DB row changes.
-  // Stream<Resources> watchResources(String childId) {
-  //   return _gameService.streamResources(childId);
-  // }
+  Stream<Resources> watchResources(String childId) {
+    return _gameService.streamResources(childId);
+  }
 }

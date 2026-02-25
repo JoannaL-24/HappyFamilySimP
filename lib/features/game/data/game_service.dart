@@ -24,15 +24,12 @@ class GameService {
     return Creature.fromJson(data);
   }
 
-  /// Real-time stream of resource updates for a child.
-  // Stream<Resources> streamResources(String childId) {
-  //   return _supabase
-  //       .from('resources')
-  //       .stream(primaryKey: ['id'])
-  //       .eq('child_id', childId)
-  //       .map(
-  //         (rows) =>
-  //             rows.isEmpty ? Resources.empty : Resources.fromJson(rows.first),
-  //       );
-  // }
+  Stream<Resources> streamResources(String childId) {
+    return _supabase
+        .from('resources')
+        .stream(primaryKey: ['id'])
+        .eq('child_id', childId)
+        .map((rows) =>
+            rows.isEmpty ? Resources.empty : Resources.fromJson(rows.first));
+  }
 }

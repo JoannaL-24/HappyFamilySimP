@@ -5,6 +5,7 @@ import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/ui/login_view.dart';
 import 'package:happy_family_sim/features/auth/ui/signup_view.dart';
 import 'package:happy_family_sim/features/auth/ui/welcome_view.dart';
+import 'package:happy_family_sim/features/game/data/game_repository.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
@@ -17,6 +18,7 @@ GoRouter createRouter(
   AuthRepository authRepository,
   ProfileRepository profileRepository,
   ManageRepository manageRepository,
+  GameRepository gameRepository,
   String userRole,
   Function(String) onLoginSucess,
 ) {
@@ -66,7 +68,7 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/chlid/game',
-          builder: (context, state) => const GameScreen(),
+          builder: (context, state) => GameScreen(gameRepository: gameRepository),
         ),
       ],
     ),
@@ -116,7 +118,7 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: 'game',
-            builder: (context, state) => const GameScreen(),
+            builder: (context, state) => GameScreen(gameRepository: gameRepository),
           ),
         ],
       ),
