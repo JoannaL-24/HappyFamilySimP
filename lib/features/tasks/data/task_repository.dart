@@ -44,6 +44,7 @@ class TaskRepository {
       await _supabase
           .from('task_template')
           .update({
+            'parent_id': _supabase.auth.currentUser!.id,
             'title': title,
             'description': description,
             'proof_required': proofRequired,
@@ -77,4 +78,59 @@ class TaskRepository {
       throw Exception('Failed to update task occurrence.');
     }
   }
+
+  // --- ADD TASK TEMPLATE ---
+  // Use this when changing the title, description, or global dates
+  Future<TaskTemplate> createTemplate({
+  required String title,
+  required String description,
+  required bool proofRequired,
+}) async {
+  final response = await _supabase
+      .from('task_template')
+      .insert({
+        'parent_id': _supabase.auth.currentUser!.id,
+        'title': title,
+        'description': description,
+        'proof_required': proofRequired,
+      })
+      .select()
+      .single();
+  return TaskTemplate.fromJson(response);
+}
+
+// --- ADD TASK OCCURRENCE ---
+  // Use this when changing status (NOTD -> DONE) or a specific due date
+Future<TaskOccurrence> createOccurrence({
+  required String childId,
+  required DateTime dueDate,
+  required String status,
+  required int templateId,
+}) async {
+  // 1. Perform the insert and select with the !inner join syntax
+  final response = await _supabase
+      .from('task_occurrence')
+      .insert({
+        'child_id': childId,
+        'due_date': dueDate.toIso8601String(),
+        'status': status,
+        'task_template_id': templateId,
+      })
+      .select('''
+        *,
+        task_template!inner(*),
+        child:profiles(id, name, avatar_path)
+      ''')
+      .single();
+  // 2. Extract child data to generate the avatar URL
+  final childData = response['child'] as Map<String, dynamic>?;
+  final String path = childData?['avatar_path'] ?? Constants.defaultAvatarPath;
+  
+  String publicUrl = '';
+  if (path.isNotEmpty) {
+    publicUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+  }
+  // 3. Map to your model using the publicUrl parameter
+  return TaskOccurrence.fromJson(response, publicUrl);
+}
 }
