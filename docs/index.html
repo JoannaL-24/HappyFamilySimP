@@ -27,7 +27,13 @@
         const anonKey = 'sb_publishable_YbruDuYHSixswQSuRdsUSw_hQol-EZ6'; 
         
         // CHANGE THIS LINE: Use 'supabaseClient' instead of 'supabase'
-        const supabaseClient = supabase.createClient(projectUrl, anonKey);
+        const supabaseClient = supabase.createClient(projectUrl, anonKey, {
+            auth: {
+                flowType: 'implicit', // This forces the #access_token format
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
 
         async function updatePassword() {
             const password = document.getElementById('new-password').value;
