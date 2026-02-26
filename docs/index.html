@@ -23,37 +23,32 @@
     </div>
 
     <script>
-        const projectUrl = 'https://jpniuhsorgjkaqfxjgsr.supabase.co';
-        const anonKey = 'sb_publishable_YbruDuYHSixswQSuRdsUSw_hQol-EZ6'; 
-        
-        // CHANGE THIS LINE: Use 'supabaseClient' instead of 'supabase'
-        const supabaseClient = supabase.createClient(projectUrl, anonKey, {
-            auth: {
-                flowType: 'implicit', // This forces the #access_token format
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        });
+        window.onload = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
 
-        async function updatePassword() {
-            const password = document.getElementById('new-password').value;
-            const messageElement = document.getElementById('message');
-
-            if (password.length < 6) {
-                messageElement.innerText = "Password must be at least 6 characters.";
-                return;
-            }
-
-            const { error } = await supabaseClient.auth.updateUser({ password: password });
-
-            if (error) {
-                messageElement.style.color = "red";
-                messageElement.innerText = "Error: " + error.message;
-            } else {
-                messageElement.style.color = "green";
-                messageElement.innerText = "Password updated! You can now log in to the app.";
-            }
+        // If there's a code in the URL, exchange it for a session
+        if (code) {
+            await supabaseClient.auth.exchangeCodeForSession(code);
+            // Clean the URL so the code doesn't stay in the bar
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
+    };
+
+    async function updatePassword() {
+        const password = document.getElementById('new-password').value;
+        const messageElement = document.getElementById('message');
+
+        const { error } = await supabaseClient.auth.updateUser({ password: password });
+
+        if (error) {
+            messageElement.style.color = "red";
+            messageElement.innerText = "Error: " + error.message;
+        } else {
+            messageElement.style.color = "green";
+            messageElement.innerText = "Password updated! You can now log in to the app.";
+        }
+    }
     </script>
 </body>
 </html>
