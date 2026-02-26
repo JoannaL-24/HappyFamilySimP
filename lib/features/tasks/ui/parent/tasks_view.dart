@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:happy_family_sim/features/tasks/model/task_template.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
@@ -279,7 +278,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
