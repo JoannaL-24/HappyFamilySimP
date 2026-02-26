@@ -38,7 +38,7 @@
             <li>• At least 8 characters long</li>
             <li>• At least one uppercase letter (A-Z)</li>
             <li>• At least one lowercase letter (a-z)</li>
-            <li>• One special character (e.g., @, #, $, %)</li>
+            <li>• One special character (e.g., @, #, $, %, _)</li>
         </ul>
 
         <button id="update-btn">Update Password</button>
@@ -57,6 +57,12 @@
         const eyeIcon = document.getElementById('eye-icon');
         const updateBtn = document.getElementById('update-btn');
         const messageElement = document.getElementById('message');
+
+        function showError(msg) {
+            messageElement.style.color = "red";
+            messageElement.innerText = msg;
+            updateBtn.disabled = true;
+        }
 
         eyeIcon.addEventListener('click', () => {
             const isPassword = passwordInput.type === 'password';
