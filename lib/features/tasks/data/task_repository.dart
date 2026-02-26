@@ -133,6 +133,7 @@ Future<TaskOccurrence> createOccurrence({
   // 3. Map to your model using the publicUrl parameter
   return TaskOccurrence.fromJson(response, publicUrl);
 }
+
 Future<void> deleteTasksBulk(List<int> occurrenceIds, List<int> templateIds) async {
   // 1. Delete all occurrences whose IDs are in our list
   await _supabase
