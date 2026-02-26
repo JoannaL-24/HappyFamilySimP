@@ -27,7 +27,9 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/tasks',
-          builder: (context, state) => const ParentTasksScreen(),
+          builder: (context, state) => ParentTasksScreen(
+            authRepository : authRepository,
+          ),
         ),
       ],
     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/features/tasks/model/task_template.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,13 +11,31 @@ class TaskRepository {
   Future<List<TaskOccurrence>> fetchChildTasks(String parentId) async {
     final response = await _supabase
         .from('task_occurrence')
-        .select('*, task_template!inner(*)')
+        .select('''*,
+           task_template!inner(*),
+          child:profiles!inner(name, avatar_path)   
+        ''')
         .eq('task_template.parent_id', parentId)
+        .order('status', ascending: false)
         .order('due_date', ascending: true);
-    debugPrint(response.toString());
-    return (response as List)
-        .map((json) => TaskOccurrence.fromJson(json))
-        .toList();
+    debugPrint('Supabase response for child tasks: $response');
+    return (response as List).map((json) {
+      // Extract the nested child data
+      final childData = json['child'] as Map<String, dynamic>?;
+      final String path = childData?['avatar_path'] ?? Constants.defaultAvatarPath;
+
+      // Generate the Public URL (matching your Profile page logic)
+      String publicUrl = '';
+      if (path.isNotEmpty) {
+        publicUrl = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(path);
+      }
+      return TaskOccurrence.fromJson(json, publicUrl);
+    }).toList();
+    // return (response as List)
+    //     .map((json) => TaskOccurrence.fromJson(json))
+    //     .toList();
   }
 
   // --- UPDATE TASK TEMPLATE ---
