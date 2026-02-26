@@ -23,15 +23,30 @@
     </div>
 
     <script>
-        window.onload = async () => {
+        // 1. Declare the variable at the top (global scope)
+    let supabaseClient;
+
+    // 2. Initialize it as soon as the script loads
+    const projectUrl = 'https://jpniuhsorgjkaqfxjgsr.supabase.co';
+    const anonKey = 'YOUR_ACTUAL_ANON_KEY'; 
+
+    supabaseClient = supabase.createClient(projectUrl, anonKey);
+
+    // 3. Handle the code exchange when the window loads
+    window.onload = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
 
-        // If there's a code in the URL, exchange it for a session
         if (code) {
-            await supabaseClient.auth.exchangeCodeForSession(code);
-            // Clean the URL so the code doesn't stay in the bar
-            window.history.replaceState({}, document.title, window.location.pathname);
+            try {
+                const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
+                if (error) throw error;
+                console.log("Session established successfully");
+                // Clean the URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (err) {
+                console.error("Error exchanging code:", err.message);
+            }
         }
     };
 
@@ -39,6 +54,7 @@
         const password = document.getElementById('new-password').value;
         const messageElement = document.getElementById('message');
 
+        // Now supabaseClient is guaranteed to be defined
         const { error } = await supabaseClient.auth.updateUser({ password: password });
 
         if (error) {
