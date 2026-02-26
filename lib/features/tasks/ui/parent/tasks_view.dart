@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/data/manage_service.dart';
@@ -138,7 +137,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         backgroundColor: colorScheme.surfaceContainer,
         elevation: 1,
       ),
-
       body: _isLoadingTasks
           ? const Center(child: CircularProgressIndicator())
           : _tasks.isEmpty
@@ -177,7 +175,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => _showEditSheet(occurrence),
+                        onTap: () => _showTaskForm(occurrence: occurrence),
                         child: Padding(
                           padding: const EdgeInsets.all(14),
                           child: Row(
@@ -267,6 +265,13 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                 },
               ),
             ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showTaskForm(),
+        label: const Text("New Task"),
+        icon: const Icon(Icons.add_task),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+      ),
     );
   }
 
@@ -320,21 +325,28 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 
   // --- Edit Logistics: Bottom Sheet ---
-  void _showEditSheet(TaskOccurrence occurrence) {
+  void _showTaskForm({TaskOccurrence? occurrence}) {
+    final bool isEditing = occurrence != null;
+
     // Local state for the form
     final titleController = TextEditingController(
-      text: occurrence.template?.title,
+      text: isEditing ? occurrence.template?.title : "",
     );
     final descController = TextEditingController(
-      text: occurrence.template?.description,
+      text: isEditing ? occurrence.template?.description : "",
     );
-    DateTime selectedDate = occurrence.dueDate;
-    String currentStatus = occurrence.status;
-    bool proofRequired = occurrence.template?.proofRequired ?? false;
-    ThemeData theme = Theme.of(context);
-    String? selectedChildId = occurrence.childId;
+    DateTime selectedDate = isEditing
+        ? occurrence.dueDate
+        : DateTime.now().add(const Duration(hours: 1));
+    String currentStatus = isEditing ? occurrence.status : 'NOTD';
+    bool proofRequired = isEditing
+        ? (occurrence.template?.proofRequired ?? false)
+        : false;
+    String? selectedChildId = isEditing ? occurrence.childId : null;
 
+    String? titleError;
     bool _isSaving = false;
+    ThemeData theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -366,7 +378,10 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                   const CircularProgressIndicator()
                 else
                   // 0. Header
-                  Text("Edit Task", style: theme.textTheme.headlineSmall),
+                  Text(
+                    isEditing ? "Edit Task" : "New Task",
+                    style: theme.textTheme.headlineSmall,
+                  ),
                 const SizedBox(height: 24),
 
                 // 1. Task Title
@@ -543,45 +558,77 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             if (titleController.text.trim().isEmpty) {
                               return;
                             }
-                            setSheetState(() => _isSaving = true);
-                            try {
-                              final TaskRepository repository =
-                                  TaskRepository();
-                              await Future.wait([
-                                repository.updateTemplate(
-                                  templateId: occurrence.templateId,
-                                  title: titleController.text,
-                                  description: descController.text,
-                                  proofRequired: proofRequired,
+                            if (selectedChildId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Please select an assignee"),
                                 ),
-                                repository.updateOccurrence(
-                                  occurrenceId: occurrence.id,
-                                  dueDate: selectedDate,
-                                  status: currentStatus,
-                                  childId: selectedChildId!,
-                                ),
-                              ]);
-                              int index = _tasks.indexWhere(
-                                (t) => t.id == occurrence.id,
                               );
-                              if (index != -1) {
-                                setState(() {
-                                  _tasks[index] = _tasks[index].copyWith(
+                              return;
+                            }
+                            setSheetState(() => _isSaving = true);
+                            final TaskRepository repository = TaskRepository();
+                            try {
+                              if (isEditing) {
+                                // 1. Update existing task
+                                await Future.wait([
+                                  repository.updateTemplate(
+                                    templateId: occurrence.templateId,
+                                    title: titleController.text,
+                                    description: descController.text,
+                                    proofRequired: proofRequired,
+                                  ),
+                                  repository.updateOccurrence(
+                                    occurrenceId: occurrence.id,
                                     dueDate: selectedDate,
                                     status: currentStatus,
-                                    childId: selectedChildId,
-                                    childName: _availableChildren.firstWhere(
-                                      (child) => child['id'] == selectedChildId,
-                                      orElse: () => {'name': 'Unknown'},
-                                    )['name'],
-                                    template: _tasks[index].template!.copyWith(
+                                    childId: selectedChildId!,
+                                  ),
+                                ]);
+                                // 2. Refresh the local list to reflect changes
+                                int index = _tasks.indexWhere(
+                                  (t) => t.id == occurrence.id,
+                                );
+                                if (index != -1) {
+                                  setState(() {
+                                    _tasks[index] = _tasks[index].copyWith(
+                                      dueDate: selectedDate,
+                                      status: currentStatus,
+                                      childId: selectedChildId,
+                                      childName: _availableChildren.firstWhere(
+                                        (child) =>
+                                            child['id'] == selectedChildId,
+                                        orElse: () => {'name': 'Unknown'},
+                                      )['name'],
+                                      template: _tasks[index].template!
+                                          .copyWith(
+                                            title: titleController.text,
+                                            description: descController.text,
+                                            proofRequired: proofRequired,
+                                          ),
+                                    );
+                                  });
+                                }
+                              } else {
+                                // 1. Create new task
+                                final newTemplate = await repository
+                                    .createTemplate(
                                       title: titleController.text,
                                       description: descController.text,
                                       proofRequired: proofRequired,
-                                    ),
-                                  );
-                                });
+                                    );
+                                final newTask = await repository
+                                    .createOccurrence(
+                                      childId: selectedChildId!,
+                                      dueDate: selectedDate,
+                                      status: currentStatus,
+                                      templateId: newTemplate.id,
+                                    );
+                                setState(() => _tasks.insert(0, newTask));
+                                // 2. Refresh the entire list to include the new task
+                                await _refreshTasks();
                               }
+
                               setSheetState(() => _isSaving = false);
                               if (context.mounted) Navigator.pop(context);
                             } catch (e) {
@@ -603,12 +650,9 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text("Save Changes"),
+                        : Text(isEditing ? "Save Changes" : "Create Task"),
                   ),
                 ),
               ],
@@ -732,18 +776,18 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         ),
                       ),
                       // 4. Error Message (e.g. for past date selection)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Text(
-                            dialogError ?? "",
-                            style: TextStyle(
-                              color: theme.colorScheme.error,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Text(
+                          dialogError ?? "",
+                          style: TextStyle(
+                            color: theme.colorScheme.error,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
+                          textAlign: TextAlign.center,
                         ),
+                      ),
                     ],
                   ),
                 ),
