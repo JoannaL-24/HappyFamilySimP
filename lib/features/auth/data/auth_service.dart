@@ -75,8 +75,8 @@ class AuthService {
   Future<void> sendPasswordResetService(String email) async {
     await _supabase.auth.resetPasswordForEmail(
       email,
-      // Replace with your actual deep link scheme (configured in Supabase dashboard)
-      redirectTo: 'https://jpniuhsorgjkaqfxjgsr.supabase.co',
+      //TODO: Page hosted in a forked repo. Replace with actual page link (based in the original repo) 
+      redirectTo: 'https://chaoyi-zoey-lu.github.io/happy-family-sim/',
     );
   }
 

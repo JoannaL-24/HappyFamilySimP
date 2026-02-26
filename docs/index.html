@@ -23,10 +23,11 @@
     </div>
 
     <script>
-        // Use your specific Project URL from the image
         const projectUrl = 'https://jpniuhsorgjkaqfxjgsr.supabase.co';
-        const anonKey = 'sb_publishable_YbruDuYHSixswQSuRdsUSw_hQol-EZ6'; // Get this from the API tab next to the URL
-        const supabase = supabase.createClient(projectUrl, anonKey);
+        const anonKey = 'sb_publishable_YbruDuYHSixswQSuRdsUSw_hQol-EZ6'; 
+        
+        // CHANGE THIS LINE: Use 'supabaseClient' instead of 'supabase'
+        const supabaseClient = supabase.createClient(projectUrl, anonKey);
 
         async function updatePassword() {
             const password = document.getElementById('new-password').value;
@@ -37,7 +38,7 @@
                 return;
             }
 
-            const { error } = await supabase.auth.updateUser({ password: password });
+            const { error } = await supabaseClient.auth.updateUser({ password: password });
 
             if (error) {
                 messageElement.style.color = "red";
