@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/features/tasks/model/task_template.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
+import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
+import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 
 class ParentTasksScreen extends StatefulWidget {
   const ParentTasksScreen({super.key});
@@ -10,43 +12,58 @@ class ParentTasksScreen extends StatefulWidget {
 }
 
 class _ParentTasksScreenState extends State<ParentTasksScreen> {
-  // --- Logistics: Hardcoded Data using your Real Models ---
-  late List<TaskOccurrence> _tasks;
+  final TaskRepository _taskRepository = TaskRepository();
+  // future as state to enable
+  late Future<List<TaskOccurrence>> _tasksFuture;
 
   @override
   void initState() {
     super.initState();
-    _tasks = [
-      TaskOccurrence(
-        id: 1,
-        templateId: 101,
-        dueDate: DateTime.now().add(const Duration(days: 1)),
-        status: 'NOTD',
-        template: TaskTemplate(
-          id: 101,
-          title: "Clean Bedroom",
-          description: "Pick up toys, vacuum the rug, and make the bed.",
-          proofRequired: true,
-          startDate: DateTime.now(),
-          endDate: DateTime.now().add(const Duration(days: 7)),
-        ),
-      ),
-      TaskOccurrence(
-        id: 2,
-        templateId: 102,
-        dueDate: DateTime.now().subtract(const Duration(hours: 2)),
-        status: 'DONE',
-        template: TaskTemplate(
-          id: 102,
-          title: "Brush Teeth",
-          description: "Brush for 2 minutes and use mouthwash.",
-          proofRequired: false,
-          startDate: DateTime.now(),
-          endDate: DateTime.now().add(const Duration(days: 30)),
-        ),
-      ),
-    ];
+    _refreshTasks();
   }
+
+  void _refreshTasks() {
+    setState(() {
+      //TODO: fetch parentId from auth state
+      _tasksFuture = _taskRepository.fetchChildTasks('a5dd0fb2-7836-471b-9230-ca1017b42b1e');
+      debugPrint(_tasksFuture.toString()); // Debug print to verify future is set
+    });
+  }
+  // late List<TaskOccurrence> _tasks;
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _tasks = [
+  //     TaskOccurrence(
+  //       id: 1,
+  //       templateId: 101,
+  //       dueDate: DateTime.now().add(const Duration(days: 1)),
+  //       status: 'NOTD',
+  //       template: TaskTemplate(
+  //         id: 101,
+  //         title: "Clean Bedroom",
+  //         description: "Pick up toys, vacuum the rug, and make the bed.",
+  //         proofRequired: true,
+  //         startDate: DateTime.now(),
+  //         endDate: DateTime.now().add(const Duration(days: 7)),
+  //       ),
+  //     ),
+  //     TaskOccurrence(
+  //       id: 2,
+  //       templateId: 102,
+  //       dueDate: DateTime.now().subtract(const Duration(hours: 2)),
+  //       status: 'DONE',
+  //       template: TaskTemplate(
+  //         id: 102,
+  //         title: "Brush Teeth",
+  //         description: "Brush for 2 minutes and use mouthwash.",
+  //         proofRequired: false,
+  //         startDate: DateTime.now(),
+  //         endDate: DateTime.now().add(const Duration(days: 30)),
+  //       ),
+  //     ),
+  //   ];
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -60,56 +77,85 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           child: Text('Tasks', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 0,
+        backgroundColor: colorScheme.surfaceContainer,
+        elevation: 1,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        itemCount: _tasks.length,
-        itemBuilder: (context, index) {
-          final occurrence = _tasks[index];
-          // Accessing the join template connected to occurrence
-          // TODO: Handle null template case
-          final template = occurrence.template!;
-          final isDone = occurrence.status == 'DONE';
+      body: FutureBuilder<List<TaskOccurrence>>(
+        future: _tasksFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No tasks found."));
+          }
 
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 16),
-            color: colorScheme.surfaceContainerLow,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: colorScheme.outlineVariant, width: 1),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => _showEditSheet(occurrence),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // 1. Left aligned: indicator
-                    _buildStatusIndicator(occurrence.status, colorScheme),
-                    const SizedBox(width: 16),
-                    // 2. Left aligned: Task Details
-                    Text(
-                      template.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        decoration: isDone ? TextDecoration.lineThrough : null,
-                        color: isDone
-                            ? colorScheme.outline
-                            : colorScheme.onSurface,
+          final tasks = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            itemCount: tasks.length,
+            itemBuilder: (context, index) {
+              final occurrence = tasks[index];
+              // Accessing the join template connected to occurrence
+              // TODO: Handle null template case
+              final template = occurrence.template!;
+              final isDone = occurrence.status == 'DONE';
+
+              return Opacity(
+                opacity: isDone ? 0.6 : 1.0,
+                child: Card(
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  color: isDone
+                      ? colorScheme.surfaceContainerHigh
+                      : colorScheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    // side: BorderSide(color: isDone ? colorScheme.outlineVariant.withAlpha(125): colorScheme.outlineVariant, width: 0.7),
+                    side: BorderSide(
+                      color: isDone
+                          ? Colors.transparent
+                          : colorScheme.primary.withAlpha(50),
+                      width: 1,
+                    ),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => _showEditSheet(occurrence),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          // 1. Left aligned: indicator
+                          _buildChildIndicator(occurrence.status, colorScheme),
+                          const SizedBox(width: 16),
+                          // 2. Left aligned: Task Details
+                          Text(
+                            template.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              decoration: isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: isDone
+                                  ? colorScheme.outline
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          // 3. Right aligned: Due Date + Chevron
+                          const Spacer(),
+                          _buildDueChip(occurrence.dueDate, colorScheme),
+                          const SizedBox(width: 8),
+                          Icon(Icons.chevron_right, color: colorScheme.outline),
+                        ],
                       ),
                     ),
-                    // 3. Right aligned: Due Date + Chevron
-                    const Spacer(),
-                    _buildDueChip(occurrence.dueDate, colorScheme),
-                    const SizedBox(width: 8),
-                    Icon(Icons.chevron_right, color: colorScheme.outline),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       ),
@@ -118,18 +164,23 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
 
   // --- Helper UI Components ---
   // TODO: to adjust
-  Widget _buildStatusIndicator(String status, ColorScheme colorScheme) {
+  Widget _buildChildIndicator(String status, ColorScheme colorScheme) {
     final bool isDone = status == 'DONE';
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: isDone ? colorScheme.primary : colorScheme.surfaceContainerHigh,
         shape: BoxShape.circle,
+        color: isDone ? colorScheme.surfaceDim : colorScheme.surfaceDim,
+        // border: Border.all(
+        //   color: isDone ? colorScheme.primary : colorScheme.outlineVariant,
+        //   width: 2,
+        // ),
       ),
       child: Icon(
-        isDone ? Icons.check : Icons.timer_outlined,
-        color: isDone ? colorScheme.onPrimary : colorScheme.primary,
+        Icons.person,
+        // isDone ? Icons.check : Icons.person,
+        color: colorScheme.primary,
       ),
     );
   }
@@ -142,7 +193,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         borderRadius: BorderRadius.circular(30),
       ),
       child: Text(
-        "Due: ${date.month}/${date.day}",
+        "Due: ${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}",
         style: TextStyle(
           color: colorScheme.onSecondaryContainer,
           fontSize: 12,

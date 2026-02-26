@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:happy_family_sim/features/tasks/model/task_template.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,9 +10,10 @@ class TaskRepository {
   Future<List<TaskOccurrence>> fetchChildTasks(String parentId) async {
     final response = await _supabase
         .from('task_occurrence')
-        .select('*, task_template(*)')
-        .eq('parent_id', parentId);
-
+        .select('*, task_template!inner(*)')
+        .eq('task_template.parent_id', parentId)
+        .order('due_date', ascending: true);
+    debugPrint(response.toString());
     return (response as List)
         .map((json) => TaskOccurrence.fromJson(json))
         .toList();
