@@ -66,9 +66,20 @@
 
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
+
+            //check if has expired
+            const errorCode = urlParams.get('error_code') || 
+                      new URLSearchParams(window.location.hash.substring(1)).get('error_code');
+
+            if (errorCode === 'otp_expired') {
+                showError("This link has expired (10 min limit). Please request a new one from the app.");
+                updateBtn.disabled = true;
+                return; // Stop execution here
+            }
+
             const code = urlParams.get('code');
             if (code) {
-                // This is the magic bridge for PKCE flow
+                // for PKCE flow
                 await supabaseClient.auth.exchangeCodeForSession(code);
                 console.log("Code exchanged for session!");
             }
@@ -79,7 +90,7 @@
             const password = passwordInput.value;
 
             // Simple check based on your UI requirements
-            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{8,})/;
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*_])(?=.{8,})/;
             if (!regex.test(password)) {
                 messageElement.style.color = "red";
                 messageElement.innerText = "Password does not meet requirements.";
