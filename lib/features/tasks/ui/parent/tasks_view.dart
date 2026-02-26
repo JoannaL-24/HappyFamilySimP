@@ -66,9 +66,68 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   // }
 
   @override
+  State<ParentTasksScreen> createState() => _ParentTasksScreenState();
+}
+
+class _ParentTasksScreenState extends State<ParentTasksScreen> {
+  final TaskRepository _taskRepository = TaskRepository();
+  // future as state to enable
+  late Future<List<TaskOccurrence>> _tasksFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTasks();
+  }
+
+  void _refreshTasks() {
+    setState(() {
+      //TODO: fetch parentId from auth state
+      _tasksFuture = _taskRepository.fetchChildTasks('a5dd0fb2-7836-471b-9230-ca1017b42b1e');
+      debugPrint(_tasksFuture.toString()); // Debug print to verify future is set
+    });
+  }
+  // late List<TaskOccurrence> _tasks;
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _tasks = [
+  //     TaskOccurrence(
+  //       id: 1,
+  //       templateId: 101,
+  //       dueDate: DateTime.now().add(const Duration(days: 1)),
+  //       status: 'NOTD',
+  //       template: TaskTemplate(
+  //         id: 101,
+  //         title: "Clean Bedroom",
+  //         description: "Pick up toys, vacuum the rug, and make the bed.",
+  //         proofRequired: true,
+  //         startDate: DateTime.now(),
+  //         endDate: DateTime.now().add(const Duration(days: 7)),
+  //       ),
+  //     ),
+  //     TaskOccurrence(
+  //       id: 2,
+  //       templateId: 102,
+  //       dueDate: DateTime.now().subtract(const Duration(hours: 2)),
+  //       status: 'DONE',
+  //       template: TaskTemplate(
+  //         id: 102,
+  //         title: "Brush Teeth",
+  //         description: "Brush for 2 minutes and use mouthwash.",
+  //         proofRequired: false,
+  //         startDate: DateTime.now(),
+  //         endDate: DateTime.now().add(const Duration(days: 30)),
+  //       ),
+  //     ),
+  //   ];
+  // }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Padding(
