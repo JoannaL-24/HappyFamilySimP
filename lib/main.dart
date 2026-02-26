@@ -6,6 +6,10 @@ import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/router.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_service.dart';
+import 'package:happy_family_sim/features/management/data/manage_repository.dart';
+import 'package:happy_family_sim/features/management/data/manage_service.dart';
+import 'package:happy_family_sim/features/game/data/game_repository.dart';
+import 'package:happy_family_sim/features/game/data/game_service.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/data/profile_service.dart';
 import 'package:logger/logger.dart';
@@ -35,11 +39,17 @@ Future<void> main() async {
   final authRepository = AuthRepository(authService);
   final profileService = ProfileService(supabase);
   final profileRepository = ProfileRepository(profileService);
+  final manageService = ManageService(supabase);
+  final manageRepository = ManageRepository(manageService);
+  final gameService = GameService(supabase);
+  final gameRepository = GameRepository(gameService);
 
   runApp(
     HappyFamilyApp(
       authRepository: authRepository,
       profileRepository: profileRepository,
+      manageRepository: manageRepository,
+      gameRepository: gameRepository,
     ),
   );
 }
@@ -47,10 +57,15 @@ Future<void> main() async {
 class HappyFamilyApp extends StatefulWidget {
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final ManageRepository manageRepository;
+  final GameRepository gameRepository;
+
   const HappyFamilyApp({
     super.key,
     required this.authRepository,
     required this.profileRepository,
+    required this.manageRepository,
+    required this.gameRepository,
   });
 
   @override
@@ -123,6 +138,8 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
       routerConfig: createRouter(
         widget.authRepository,
         widget.profileRepository,
+        widget.manageRepository,
+        widget.gameRepository,
         _currentRole,
         _updateRole,
       ),

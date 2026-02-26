@@ -50,10 +50,8 @@ class FurnitureSpriteSheet {
     return _instance!;
   }
 
-  /// Number of sprites available.
   int get count => _sprites.length;
 
-  /// All available sprite IDs.
   Iterable<int> get ids => _sprites.keys;
 
   /// Create a [SpriteComponent] for the given furniture ID.

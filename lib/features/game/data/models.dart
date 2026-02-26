@@ -1,0 +1,39 @@
+class Resources {
+  final int food;
+  final int play;
+  final int clean;
+
+  Resources({required this.food, required this.play, required this.clean});
+
+  factory Resources.fromJson(Map<String, dynamic> json) => Resources(
+    food: (json['food'] as num? ?? 0).toInt(),
+    play: (json['play'] as num? ?? 0).toInt(),
+    clean: (json['clean'] as num? ?? 0).toInt(),
+  );
+
+  static Resources get empty => Resources(food: 0, play: 0, clean: 0);
+}
+
+class Creature {
+  final String type;
+  final String name;
+  final int fullness;
+  final int happiness;
+  final int cleanliness;
+
+  Creature({
+    required this.type,
+    required this.name,
+    required this.fullness,
+    required this.happiness,
+    required this.cleanliness,
+  });
+
+  factory Creature.fromJson(Map<String, dynamic> json) => Creature(
+    type: json['type'] as String? ?? 'cat',
+    name: json['name'] as String? ?? 'Pet',
+    fullness: (json['fullness'] as num? ?? 100).toInt(),
+    happiness: (json['happiness'] as num? ?? 100).toInt(),
+    cleanliness: (json['cleanliness'] as num? ?? 100).toInt(),
+  );
+}

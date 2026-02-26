@@ -1,7 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 
-enum PetState { idle, box }
+enum PetState { idle, cry }
 
 class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
   final Vector2 velocity = Vector2.zero();
@@ -14,7 +14,7 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
 
     final [idle, box] = await Future.wait([
       SpriteAnimation.load(
-        'Idle.png',
+        'Assets/Cats/CatSprites/Classical/Individual/Idle.png',
         SpriteAnimationData.sequenced(
           amount: 10,
           textureSize: Vector2(32, 32),
@@ -22,7 +22,7 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
         ),
       ),
       SpriteAnimation.load(
-        'Box3.png',
+        'Assets/Cats/CatSprites/Classical/Individual/Cry.png',
         SpriteAnimationData.sequenced(
           amount: 4,
           textureSize: Vector2(32, 32),
@@ -31,7 +31,7 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
       ),
     ]);
 
-    animations = {PetState.idle: idle, PetState.box: box};
+    animations = {PetState.idle: idle, PetState.cry: box};
     current = PetState.idle;
 
     return super.onLoad();
@@ -50,8 +50,8 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
     }
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
-    current = current == PetState.idle ? PetState.box : PetState.idle;
-  }
+  // @override
+  // void onTapDown(TapDownEvent event) {
+  //   current = current == PetState.idle ? PetState.cry : PetState.idle;
+  // }
 }

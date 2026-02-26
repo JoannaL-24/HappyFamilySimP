@@ -59,6 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchProfileData() async {
+    setState(() => _isLoading = true);
     try {
       final userId = widget.authRepository.currentUser?.id;
       if (userId == null) return;
@@ -71,11 +72,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _originalAvatarUrl = profile.avatarUrl;
 
           _nameController.text = _originalName ?? "";
-          _isLoading = false;
         });
       }
     } catch (e) {
-      Utils.showError(e.toString());
+      Utils.showError(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
