@@ -132,6 +132,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
