@@ -30,6 +30,16 @@
         // 2. Initialize the client globally
         const supabaseClient = supabase.createClient(projectUrl, anonKey);
 
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            if (code) {
+                // This is the magic bridge for PKCE flow
+                await supabaseClient.auth.exchangeCodeForSession(code);
+                console.log("Code exchanged for session!");
+            }
+        };
+
         // 3. This function handles the password update button
         async function updatePassword() {
             const password = document.getElementById('new-password').value;
