@@ -73,11 +73,7 @@ class AuthService {
   }
 
   Future<void> sendPasswordResetService(String email) async {
-    await _supabase.auth.resetPasswordForEmail(
-      email,
-      //TODO: Page hosted in a forked repo. Replace with actual page link (based in the original repo) 
-      redirectTo: 'https://chaoyi-zoey-lu.github.io/happy-family-sim/',
-    );
+    await _supabase.auth.resetPasswordForEmail(email);
   }
 
   // 2. Actually update the password once they return
