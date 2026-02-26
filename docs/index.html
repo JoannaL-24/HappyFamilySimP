@@ -11,15 +11,41 @@
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background: #45a049; }
+        .password-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        #new-password {
+            width: 100%;
+            padding-right: 40px; /* Space for the icon */
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+            color: #666;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
+    <!-- <div class="card">
         <h2>Reset Password</h2>
         <p>Please enter your new password below.</p>
         <input type="password" id="new-password" placeholder="New Password">
         <button onclick="updatePassword()">Update Password</button>
         <p id="message" style="margin-top: 15px; color: red;"></p>
+    </div> -->
+    <div class="card">
+        <h2>Reset Password</h2>
+        <div class="password-container">
+            <input type="password" id="new-password" placeholder="New Password">
+            <span class="toggle-password" onclick="togglePassword()">👁️</span>
+        </div>
+        <button id="update-btn" onclick="updatePassword()">Update Password</button>
+        <!-- <button id="back-to-app" style="display: none; background: #2196F3; margin-top: 10px;" onclick="window.location.href='happy-family-sim://'">Return to App</button> -->
+        <p id="message" style="margin-top: 15px;"></p>
     </div>
 
     <script>
@@ -40,10 +66,29 @@
             }
         };
 
+        function togglePassword() {
+            const passwordInput = document.getElementById('new-password');
+            const toggleIcon = document.querySelector('.toggle-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.innerText = '🔒'; // Optional: change icon state
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.innerText = '👁️';
+            }
+        }
+
         // 3. This function handles the password update button
         async function updatePassword() {
             const password = document.getElementById('new-password').value;
             const messageElement = document.getElementById('message');
+
+            // Basic length check
+            if (password.length < 8) {
+                messageElement.style.color = "red";
+                messageElement.innerText = "Password must be at least 8 characters.";
+                return;
+            }
 
             // Now supabaseClient is guaranteed to exist here
             const { error } = await supabaseClient.auth.updateUser({ 
@@ -51,8 +96,14 @@
             });
 
             if (error) {
-                messageElement.style.color = "red";
-                messageElement.innerText = "Error: " + error.message;
+                <!-- messageElement.style.color = "red";
+                messageElement.innerText = "Error: " + error.message; -->
+                // Handle the 10-minute expiration
+                if (error.message.toLowerCase().includes("expired") || error.status === 401) {
+                    showError("This link expired after 10 minutes. Please request a new one.");
+                } else {
+                    showError("Error: " + error.message);
+                }
             } else {
                 messageElement.style.color = "green";
                 messageElement.innerText = "Password updated! You can now log in to the app.";
