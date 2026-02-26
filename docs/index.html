@@ -8,25 +8,13 @@
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f4f4f9; }
         .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #45a049; }
-        .password-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        #new-password {
-            width: 100%;
-            padding-right: 40px; /* Space for the icon */
-        }
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            cursor: pointer;
-            color: #666;
-            user-select: none;
-        }
+        .password-container { position: relative; display: flex; align-items: center; margin-bottom: 10px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .toggle-password { position: absolute; right: 10px; cursor: pointer; color: #666; user-select: none; }
+        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #cccccc; cursor: not-allowed; }
+        .requirements { font-size: 0.85rem; color: #d9534f; margin: 10px 0; list-style: none; padding: 0; }
+        #message { margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -39,13 +27,22 @@
     </div> -->
     <div class="card">
         <h2>Reset Password</h2>
+        <p>Please enter your new password below.</p>
+        
         <div class="password-container">
             <input type="password" id="new-password" placeholder="New Password">
-            <span class="toggle-password" onclick="togglePassword()">👁️</span>
+            <span class="toggle-password" id="eye-icon">👁️</span>
         </div>
-        <button id="update-btn" onclick="updatePassword()">Update Password</button>
-        <!-- <button id="back-to-app" style="display: none; background: #2196F3; margin-top: 10px;" onclick="window.location.href='happy-family-sim://'">Return to App</button> -->
-        <p id="message" style="margin-top: 15px;"></p>
+
+        <ul class="requirements">
+            <li>• At least 8 characters long</li>
+            <li>• At least one uppercase letter (A-Z)</li>
+            <li>• At least one lowercase letter (a-z)</li>
+            <li>• One special character (e.g., @, #, $, %)</li>
+        </ul>
+
+        <button id="update-btn">Update Password</button>
+        <p id="message"></p>
     </div>
 
     <script>
@@ -55,6 +52,17 @@
 
         // 2. Initialize the client globally
         const supabaseClient = supabase.createClient(projectUrl, anonKey);
+
+        const passwordInput = document.getElementById('new-password');
+        const eyeIcon = document.getElementById('eye-icon');
+        const updateBtn = document.getElementById('update-btn');
+        const messageElement = document.getElementById('message');
+
+        eyeIcon.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            eyeIcon.innerText = isPassword ? '🔒' : '👁️';
+        });
 
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -66,49 +74,34 @@
             }
         };
 
-        function togglePassword() {
-            const passwordInput = document.getElementById('new-password');
-            const toggleIcon = document.querySelector('.toggle-password');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.innerText = '🔒'; // Optional: change icon state
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.innerText = '👁️';
-            }
-        }
+        // Update Password Function
+        updateBtn.addEventListener('click', async () => {
+            const password = passwordInput.value;
 
-        // 3. This function handles the password update button
-        async function updatePassword() {
-            const password = document.getElementById('new-password').value;
-            const messageElement = document.getElementById('message');
-
-            // Basic length check
-            if (password.length < 8) {
+            // Simple check based on your UI requirements
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{8,})/;
+            if (!regex.test(password)) {
                 messageElement.style.color = "red";
-                messageElement.innerText = "Password must be at least 8 characters.";
+                messageElement.innerText = "Password does not meet requirements.";
                 return;
             }
 
-            // Now supabaseClient is guaranteed to exist here
-            const { error } = await supabaseClient.auth.updateUser({ 
-                password: password 
-            });
+            const { error } = await supabaseClient.auth.updateUser({ password: password });
 
             if (error) {
-                <!-- messageElement.style.color = "red";
-                messageElement.innerText = "Error: " + error.message; -->
+                messageElement.style.color = "red";
                 // Handle the 10-minute expiration
-                if (error.message.toLowerCase().includes("expired") || error.status === 401) {
-                    showError("This link expired after 10 minutes. Please request a new one.");
+                if (error.message.includes("expired") || error.status === 401) {
+                    messageElement.innerText = "Session expired. Please request a new link.";
                 } else {
-                    showError("Error: " + error.message);
+                    messageElement.innerText = "Error: " + error.message;
                 }
             } else {
                 messageElement.style.color = "green";
                 messageElement.innerText = "Password updated! You can now log in to the app.";
+                updateBtn.disabled = true;
             }
-        }
+        });
     </script>
 </body>
 </html>
