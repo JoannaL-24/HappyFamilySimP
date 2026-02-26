@@ -280,7 +280,46 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              "Edit Task Logistics",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 24),
+            // Template Edit (The "What")
+            TextField(
+              decoration: const InputDecoration(
+                labelText: "Task Title",
+                border: OutlineInputBorder(),
+              ),
+              controller: TextEditingController(
+                text: occurrence.template?.title,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Occurrence Edit (The "Status")
+            Text("Task Status", style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'NOTD', label: Text('Pending')),
+                ButtonSegment(value: 'DONE', label: Text('Completed')),
+              ],
+              selected: {occurrence.status},
+              onSelectionChanged: (newVal) {
+                // Update logic would go here
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Save Changes"),
+              ),
+            ),
             Text(
               "Edit Task Logistics",
               style: Theme.of(context).textTheme.headlineSmall,
