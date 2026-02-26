@@ -203,9 +203,15 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Family Management'),
+        title: const Text(
+          'Family Management',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -215,6 +221,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           ),
           const SizedBox(width: 8),
         ],
+        foregroundColor: colorScheme.onPrimaryContainer,
+        backgroundColor: colorScheme.surfaceContainer,
+        elevation: 1,
       ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
@@ -225,7 +234,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _children.isEmpty
                   ? _buildEmptyState()
-                  : _buildChildList(),
+                  : _buildChildList(context),
             ),
           ],
         ),
@@ -238,7 +247,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
     );
   }
 
-  Widget _buildChildList() {
+  Widget _buildChildList(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -250,10 +261,10 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
         final avatarUrl = child['avatar_url'];
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 14),
+          color: colorScheme.surface,
           shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(color: colorScheme.primary.withAlpha(50)),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
@@ -265,6 +276,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                   backgroundImage: avatarUrl != null
                       ? NetworkImage(avatarUrl)
                       : null,
+                  backgroundColor: colorScheme.surfaceDim,
                   child: avatarUrl == null ? Text(child['name']![0]) : null,
                 ),
                 const SizedBox(width: 16),

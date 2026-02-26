@@ -212,12 +212,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        foregroundColor: colorScheme.onPrimaryContainer,
+        backgroundColor: colorScheme.surfaceContainer,
+        elevation: 1,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -230,6 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 60,
+                      backgroundColor: colorScheme.surfaceDim,
                       backgroundImage: _selectedImage != null
                           ? FileImage(_selectedImage!) as ImageProvider
                           : NetworkImage(_originalAvatarUrl ?? ""),
