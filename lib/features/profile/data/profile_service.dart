@@ -17,6 +17,13 @@ class ProfileService {
     List<String> updatedFields = [];
     final Map<String, dynamic> newProfile = {};
 
+
+    // password and auth
+    if (newPassword != null) {
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      updatedFields.add('• Password');
+    }
+
     if (selectedImage != null) {
       final avatarPath = 'users/$userId.jpg';
       await _supabase.storage
@@ -43,12 +50,6 @@ class ProfileService {
 
     if (newProfile.isNotEmpty) {
       await _supabase.from('profiles').update(newProfile).eq('id', userId);
-    }
-
-    // password and auth
-    if (newPassword != null) {
-      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
-      updatedFields.add('• Password');
     }
 
     if (updatedFields.isEmpty) {

@@ -26,6 +26,17 @@ class ProfileRepository {
       );
 
       return updateMessage;
+    } on AuthApiException catch (e) {
+      logger.e('Auth error during profile update', error: e);
+
+      // password issue
+      if (e.message.toLowerCase().contains('different from the old password')) {
+        throw Exception(
+          'New password should be different from the old password.',
+        );
+      }
+
+      throw Exception('Failed to update profile. Please try again later.');
     } on PostgrestException catch (e) {
       logger.e('Postgrest error during profile update', error: e);
 
