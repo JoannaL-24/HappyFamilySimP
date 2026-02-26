@@ -85,4 +85,24 @@ class AuthRepository {
       logger.e('Error during sign out', error: e);
     }
   }
+
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _authService.sendPasswordResetService(email);
+    } on AuthException catch (e) {
+      logger.e('Reset email error', error: e);
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('An unexpected error occurred.');
+    }
+  }
+
+  Future<void> resetPassword(String newPassword) async {
+    try {
+      await _authService.updatePasswordService(newPassword);
+    } on AuthException catch (e) {
+      logger.e('Password update error', error: e);
+      throw Exception(e.message);
+    }
+  }
 }

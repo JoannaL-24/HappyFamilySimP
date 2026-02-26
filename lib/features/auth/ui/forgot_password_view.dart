@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final AuthRepository authRepository;
+  const ForgotPasswordScreen({super.key, required this.authRepository});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -52,24 +54,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loading
-                    ? null
-                    : () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        setState(() => _loading = true);
-                        try {
-                          // TODO: call supabase reset here
-                          // await supabase.auth.resetPasswordForEmail(_emailController.text.trim());
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Reset email sent (if the account exists).')),
-                            );
-                            Navigator.of(context).pop();
-                          }
-                        } finally {
-                          if (mounted) setState(() => _loading = false);
-                        }
-                      },
+                onPressed: _loading ? null : () async {
+                  if (!_formKey.currentState!.validate()) return;
+                  setState(() => _loading = true);
+                  try {
+                    await widget.authRepository.sendPasswordReset(_emailController.text.trim());
+                    if (mounted) {
+                      Utils.showSuccess('Reset link sent! Check your email.');
+                      context.pop(); // Go back to login
+                    }
+                  } catch (e) {
+                    Utils.showError(e.toString().replaceFirst('Exception: ', ''));
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
                 child: _loading
                     ? const SizedBox(
                         width: 18,

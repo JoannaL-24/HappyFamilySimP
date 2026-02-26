@@ -124,9 +124,11 @@ GoRouter createRouter(
             builder: (context, state) => GameScreen(gameRepository: gameRepository),
           ),
           GoRoute(
-          path: 'forgot-password',
-          builder: (context, state) => const ForgotPasswordScreen(),
-        ),
+            path: 'forgot-password',
+            builder: (context, state) => ForgotPasswordScreen(
+              authRepository: authRepository,
+            ),
+          ),
         ],
       ),
       if (userRole != Constants.guestRole)

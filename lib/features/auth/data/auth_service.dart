@@ -71,4 +71,19 @@ class AuthService {
   Future<void> signOutService() async {
     await _supabase.auth.signOut();
   }
+
+  Future<void> sendPasswordResetService(String email) async {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      // Replace with your actual deep link scheme (configured in Supabase dashboard)
+      redirectTo: 'https://jpniuhsorgjkaqfxjgsr.supabase.co',
+    );
+  }
+
+  // 2. Actually update the password once they return
+  Future<void> updatePasswordService(String newPassword) async {
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
 }
