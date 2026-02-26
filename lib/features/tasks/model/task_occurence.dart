@@ -22,7 +22,7 @@ class TaskOccurrence {
       id: json['id'],
       dueDate: DateTime.parse(json['due_date']),
       status: json['status'],
-      templateId: json['template_id'],
+      templateId: json['task_template_id'],
       template: json['task_template'] != null 
           ? TaskTemplate.fromJson(json['task_template']) 
           : null,
