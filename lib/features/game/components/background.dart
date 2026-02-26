@@ -1,5 +1,4 @@
 import 'package:flame/components.dart';
-import 'package:flame/flame.dart';
 
 /// Renders a background image from the Backgrounds asset folder.
 /// Anchored at center and sized to fill the camera resolution.
