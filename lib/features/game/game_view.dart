@@ -61,6 +61,8 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     try {
+      await widget.gameRepository.ensureDefaults(childId);
+
       final results = await Future.wait([
         widget.gameRepository.getCreature(childId),
         widget.gameRepository.getResources(childId),

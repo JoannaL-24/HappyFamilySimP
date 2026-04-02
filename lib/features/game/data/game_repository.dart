@@ -10,6 +10,16 @@ class GameRepository {
   final GameService _gameService;
   GameRepository(this._gameService);
 
+  Future<void> ensureDefaults(String childId) async {
+    try {
+      await _gameService.initializeDefaults(childId);
+    } on PostgrestException catch (e) {
+      logger.e('Postgrest error initializing defaults', error: e);
+    } catch (e) {
+      logger.e('Unexpected error initializing defaults', error: e);
+    }
+  }
+
   Future<Resources> getResources(String childId) async {
     try {
       return await _gameService.fetchResources(childId);

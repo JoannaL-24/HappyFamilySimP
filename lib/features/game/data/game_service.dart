@@ -7,6 +7,37 @@ class GameService {
   final SupabaseClient _supabase;
   GameService(this._supabase);
 
+  /// Inserts default creature + resources rows if they don't exist yet.
+  Future<void> initializeDefaults(String childId) async {
+    final creatures = await _supabase
+        .from('creatures')
+        .select('child_id')
+        .eq('child_id', childId);
+    if ((creatures as List).isEmpty) {
+      await _supabase.from('creatures').insert({
+        'child_id': childId,
+        'type': 'cat',
+        'name': 'Cat',
+        'fullness': 100,
+        'happiness': 100,
+        'cleanliness': 100,
+      });
+    }
+
+    final resources = await _supabase
+        .from('resources')
+        .select('child_id')
+        .eq('child_id', childId);
+    if ((resources as List).isEmpty) {
+      await _supabase.from('resources').insert({
+        'child_id': childId,
+        'food': 5,
+        'play': 5,
+        'clean': 5,
+      });
+    }
+  }
+
   Future<Resources> fetchResources(String childId) async {
     final data = await _supabase
         .from('resources')
