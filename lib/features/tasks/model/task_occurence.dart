@@ -23,13 +23,13 @@ class TaskOccurrence {
   });
 
   // fetching supporting method
-  factory TaskOccurrence.fromJson(Map<String, dynamic> json, String avatarUrl) {
+  factory TaskOccurrence.fromJson(Map<String, dynamic> json, [String? avatarUrl]) {
     final childData = json['child'] as Map<String, dynamic>?;
     return TaskOccurrence(
       id: json['id'],
-      childId: childData?['id']?.toString() ?? '',
+      childId: childData?['id']?.toString() ?? json['child_id']?.toString() ?? '',
       childName: childData?['name'] ?? 'Unknown',
-      childAvatar: avatarUrl,
+      childAvatar: avatarUrl ?? '',
       dueDate: DateTime.parse(json['due_date']),
       status: json['status'],
       templateId: json['task_template_id'],
