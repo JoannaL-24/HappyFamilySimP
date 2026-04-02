@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -11,14 +12,14 @@ class WelcomeScreen extends StatelessWidget {
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primaryContainer.withValues(alpha: 0.1),
-              colorScheme.surface,
-            ],
+            Color(0xFFFFF6E5),
+            Color(0xFFFFF0D6),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           ),
         ),
         child: SafeArea(
@@ -26,61 +27,51 @@ class WelcomeScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Column(
               children: [
-                const Spacer(flex: 2),
+                const Spacer(flex: 1),
 
-                const Icon(
-                  Icons.family_restroom_rounded,
-                  size: 100,
-                  color: Color(0xFF4A90E2),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Happy Family Sim',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.0,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                const Text(
-                  'Manage chores and care for your virtual creature together!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                    height: 1.4,
-                  ),
+                Image.asset(
+                  'assets/images/Assets/logo.png',
+                  width: 480,
                 ),
 
-                const Spacer(flex: 3),
+                const Spacer(flex: 1),
 
                 // login button
-                OutlinedButton(
-                  onPressed: () => context.go('/login'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                SizedBox(
+                  width: 260, 
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () => context.go('/login'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFD6E0), // pastel pink
+                      foregroundColor: const Color(0xFF5A3E36),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20), 
+                        side: const BorderSide(
+                          color: Color(0xFF5A3E36),
+                          width: 1.5,
+                        ),// softer corners
+                      ),
+                      elevation: 0,
                     ),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
+                    child: Text(
+                      'Login',
+                      style: GoogleFonts.quicksand(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
+
                 const SizedBox(height: 16),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       "Don't have an account?",
-                      style: TextStyle(fontSize: 15, color: Colors.black87),
+                      style: GoogleFonts.quicksand(fontSize: 15, color: Color(0xFF5A3E36)),
                     ),
 
                     // signup button
@@ -93,7 +84,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                       child: Text(
                         'Sign Up',
-                        style: TextStyle(
+                        style: GoogleFonts.quicksand(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: colorScheme.primary,
