@@ -54,6 +54,23 @@ class FurnitureSpriteSheet {
 
   Iterable<int> get ids => _sprites.keys;
 
+  /// The raw texture atlas image — usable in Flutter CustomPainters.
+  Image get atlasImage => _image;
+
+  /// Source rect of [id] inside the atlas, or null if not found.
+  Rect? spriteSourceRect(int id) {
+    final d = _sprites[id];
+    if (d == null) return null;
+    return Rect.fromLTWH(d.x, d.y, d.width, d.height);
+  }
+
+  /// Pixel size of [id], or null if not found.
+  Size? spriteSize(int id) {
+    final d = _sprites[id];
+    if (d == null) return null;
+    return Size(d.width, d.height);
+  }
+
   /// Create a [SpriteComponent] for the given furniture ID.
   /// Anchored at bottom-center with the sprite's original pixel size.
   ///

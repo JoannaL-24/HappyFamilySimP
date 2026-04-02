@@ -38,6 +38,41 @@ class GameRepository {
     }
   }
 
+  /// Applies one unit of [type] resource to the creature.
+  /// Decrements the resource count, increments the corresponding stat.
+  /// Throws if resource is 0 or stat is already at 100.
+  Future<Creature> applyResource(String childId, ResourceType type) async {
+    try {
+      return await _gameService.applyResource(childId, type);
+    } on PostgrestException catch (e) {
+      logger.e('Postgrest error applying resource', error: e);
+      throw Exception('Failed to apply resource. Please try again.');
+    } catch (e) {
+      logger.e('Unexpected error applying resource', error: e);
+      rethrow;
+    }
+  }
+
+  Future<void> updateCreatureStats(
+    String childId, {
+    required int fullness,
+    required int happiness,
+    required int cleanliness,
+  }) async {
+    try {
+      await _gameService.updateCreatureStats(
+        childId,
+        fullness: fullness,
+        happiness: happiness,
+        cleanliness: cleanliness,
+      );
+    } on PostgrestException catch (e) {
+      logger.e('Postgrest error updating creature stats', error: e);
+    } catch (e) {
+      logger.e('Unexpected error updating creature stats', error: e);
+    }
+  }
+
   /// Live stream of resource updates — emits whenever the DB row changes.
   Stream<Resources> watchResources(String childId) {
     return _gameService.streamResources(childId);

@@ -8,6 +8,8 @@ import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_service.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/data/manage_service.dart';
+import 'package:happy_family_sim/features/game/data/cosmetic_repository.dart';
+import 'package:happy_family_sim/features/game/data/cosmetic_service.dart';
 import 'package:happy_family_sim/features/game/data/game_repository.dart';
 import 'package:happy_family_sim/features/game/data/game_service.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
@@ -43,6 +45,8 @@ Future<void> main() async {
   final manageRepository = ManageRepository(manageService);
   final gameService = GameService(supabase);
   final gameRepository = GameRepository(gameService);
+  final cosmeticService = CosmeticService(supabase);
+  final cosmeticRepository = CosmeticRepository(cosmeticService);
 
   runApp(
     HappyFamilyApp(
@@ -50,6 +54,7 @@ Future<void> main() async {
       profileRepository: profileRepository,
       manageRepository: manageRepository,
       gameRepository: gameRepository,
+      cosmeticRepository: cosmeticRepository,
     ),
   );
 }
@@ -59,6 +64,7 @@ class HappyFamilyApp extends StatefulWidget {
   final ProfileRepository profileRepository;
   final ManageRepository manageRepository;
   final GameRepository gameRepository;
+  final CosmeticRepository cosmeticRepository;
 
   const HappyFamilyApp({
     super.key,
@@ -66,6 +72,7 @@ class HappyFamilyApp extends StatefulWidget {
     required this.profileRepository,
     required this.manageRepository,
     required this.gameRepository,
+    required this.cosmeticRepository,
   });
 
   @override
@@ -140,6 +147,7 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
         widget.profileRepository,
         widget.manageRepository,
         widget.gameRepository,
+        widget.cosmeticRepository,
         _currentRole,
         _updateRole,
       ),

@@ -6,6 +6,7 @@ import 'package:happy_family_sim/features/auth/ui/login_view.dart';
 import 'package:happy_family_sim/features/auth/ui/forgot_password_view.dart';
 import 'package:happy_family_sim/features/auth/ui/signup_view.dart';
 import 'package:happy_family_sim/features/auth/ui/welcome_view.dart';
+import 'package:happy_family_sim/features/game/data/cosmetic_repository.dart';
 import 'package:happy_family_sim/features/game/data/game_repository.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
@@ -20,6 +21,7 @@ GoRouter createRouter(
   ProfileRepository profileRepository,
   ManageRepository manageRepository,
   GameRepository gameRepository,
+  CosmeticRepository cosmeticRepository,
   String userRole,
   Function(String) onLoginSucess,
 ) {
@@ -73,7 +75,7 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/chlid/game',
-          builder: (context, state) => GameScreen(gameRepository: gameRepository),
+          builder: (context, state) => GameScreen(gameRepository: gameRepository, cosmeticRepository: cosmeticRepository),
         ),
       ],
     ),
@@ -123,7 +125,7 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: 'game',
-            builder: (context, state) => GameScreen(gameRepository: gameRepository),
+            builder: (context, state) => GameScreen(gameRepository: gameRepository, cosmeticRepository: cosmeticRepository),
           ),
           GoRoute(
             path: 'forgot-password',

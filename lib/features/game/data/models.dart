@@ -1,3 +1,5 @@
+enum ResourceType { food, play, clean }
+
 class Resources {
   final int food;
   final int play;
@@ -12,6 +14,12 @@ class Resources {
   );
 
   static Resources get empty => Resources(food: 0, play: 0, clean: 0);
+
+  int amountFor(ResourceType type) => switch (type) {
+    ResourceType.food => food,
+    ResourceType.play => play,
+    ResourceType.clean => clean,
+  };
 }
 
 class Creature {
@@ -36,4 +44,19 @@ class Creature {
     happiness: (json['happiness'] as num? ?? 100).toInt(),
     cleanliness: (json['cleanliness'] as num? ?? 100).toInt(),
   );
+
+  Creature copyWith({int? fullness, int? happiness, int? cleanliness}) =>
+      Creature(
+        type: type,
+        name: name,
+        fullness: fullness ?? this.fullness,
+        happiness: happiness ?? this.happiness,
+        cleanliness: cleanliness ?? this.cleanliness,
+      );
+
+  int statFor(ResourceType type) => switch (type) {
+    ResourceType.food => fullness,
+    ResourceType.play => happiness,
+    ResourceType.clean => cleanliness,
+  };
 }
