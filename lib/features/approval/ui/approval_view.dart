@@ -49,11 +49,26 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
     }
   }
 
+  // Future<void> _approveTask(TaskOccurrence task) async {
+  //   try {
+  //     await _approvalRepository.approveTask(task.id);
+  //     if (mounted) {
+  //       Utils.showSuccess('Task "${task.template?.title}" from "${task.childName}" approved!');
+  //       _fetchPendingTasks();
+  //     }
+  //   } catch (e) {
+  //     Utils.showError('Could not approve task. Please try again.');
+  //   }
+  // }
   Future<void> _approveTask(TaskOccurrence task) async {
     try {
-      await _approvalRepository.approveTask(task.id);
+      // Pass the whole task object instead of just the ID
+      await _approvalRepository.approveTask(task); 
+      
       if (mounted) {
-        Utils.showSuccess('Task "${task.template?.title}" from "${task.childName}" approved!');
+        Utils.showSuccess(
+          'Approved! ${task.childName} received ${task.template?.resourceAmount} ${task.template?.resource} points!'
+        );
         _fetchPendingTasks();
       }
     } catch (e) {

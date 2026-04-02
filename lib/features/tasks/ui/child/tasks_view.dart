@@ -24,9 +24,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   bool _isLoading = true;
   List<TaskOccurrence> _tasks = [];
 
-  // TODO: fake rewards data
-  final Map<int, int> _taskRewards = {1: 50, 2: 150, 3: 30};
-
   @override
   void initState() {
     super.initState();
@@ -303,7 +300,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   Widget _buildTaskDetailSheet(TaskOccurrence task) {
     final theme = Theme.of(context);
     final template = task.template!;
-    final reward = _taskRewards[task.id] ?? 0;
     final isDone = task.status == 'PEND';
 
     return Padding(
@@ -388,7 +384,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '$reward Stars to grow your pet!',
+                    '${template.resourceAmount} ${template.resource} points!',
                     style: theme.textTheme.bodyLarge,
                   ),
                 ],

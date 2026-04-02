@@ -36,17 +36,52 @@ class ApprovalRepository {
     }
   }
 
-  Future<void> approveTask(int occurrenceId) async {
+  // Future<void> approveTask(int occurrenceId) async {
+  //   try {
+  //     await _supabase
+  //         .from('task_occurrence')
+  //         .update({'status': 'COMP'})
+  //         .eq('id', occurrenceId);
+  //
+  //   // TODO: increment reward for child
+  //   } catch (e) {
+  //     logger.e('Error approving task: $e');
+  //     throw Exception('Failed to approve task.');
+  //   }
+  // }
+  Future<void> approveTask(TaskOccurrence task) async {
+    final template = task.template;
+    if (template == null) throw Exception('Task template data is missing.');
+
     try {
+      // 1. Update the task status to COMP (Completed)
       await _supabase
           .from('task_occurrence')
           .update({'status': 'COMP'})
-          .eq('id', occurrenceId);
+          .eq('id', task.id);
 
-    // TODO: increment reward for child
+      // 2. Fetch the current resource balance for the child
+      final resourceData = await _supabase
+          .from('resources')
+          .select()
+          .eq('child_id', task.childId)
+          .single();
+
+      // 3. Calculate new balance
+      // template.resource is 'food', 'play', or 'clean' matching your table columns
+      final String resourceType = template.resource; 
+      final int currentAmount = resourceData[resourceType] ?? 0;
+      final int newAmount = currentAmount + template.resourceAmount;
+
+      // 4. Update the resources table
+      await _supabase
+          .from('resources')
+          .update({resourceType: newAmount})
+          .eq('child_id', task.childId);
+
     } catch (e) {
-      logger.e('Error approving task: $e');
-      throw Exception('Failed to approve task.');
+      logger.e('Error during task approval and resource increment: $e');
+      throw Exception('Failed to approve task and reward resources.');
     }
   }
 
