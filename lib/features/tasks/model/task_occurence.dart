@@ -10,6 +10,7 @@ class TaskOccurrence {
   final String status;
   final int templateId;
   final TaskTemplate? template; 
+  final String? feedback;
 
   TaskOccurrence({
     required this.id,
@@ -20,6 +21,7 @@ class TaskOccurrence {
     required this.status,
     required this.templateId,
     required this.template,
+    this.feedback,
   });
 
   // fetching supporting method
@@ -36,6 +38,7 @@ class TaskOccurrence {
       template: json['task_template'] != null 
           ? TaskTemplate.fromJson(json['task_template']) 
           : null,
+      feedback: json['feedback'],
     );
   }
 
@@ -46,6 +49,7 @@ class TaskOccurrence {
     DateTime? dueDate,
     String? status,
     TaskTemplate? template,
+    String? feedback,
   }) {
     return TaskOccurrence(
       id: id,
@@ -56,6 +60,7 @@ class TaskOccurrence {
       dueDate: dueDate ?? this.dueDate,
       status: status ?? this.status,
       template: template ?? this.template,
+      feedback: feedback ?? this.feedback,
     );
   }
 

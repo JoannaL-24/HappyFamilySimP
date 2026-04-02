@@ -13,6 +13,7 @@ import 'package:happy_family_sim/features/management/data/manage_repository.dart
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/ui/profile_view.dart';
+import 'package:happy_family_sim/features/approval/ui/approval_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/child/tasks_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
 
@@ -32,6 +33,16 @@ GoRouter createRouter(
           path: '/parent/tasks',
           builder: (context, state) => ParentTasksScreen(
             authRepository : authRepository,
+          ),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: '/parent/approval',
+          builder: (context, state) => ParentApprovalScreen(
+            authRepository: authRepository,
           ),
         ),
       ],
