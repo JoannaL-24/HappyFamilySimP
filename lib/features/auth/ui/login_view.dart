@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -66,7 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Happy Family Sim'),
+          backgroundColor: const Color(0xFFFFF6E8),
+          title: Image.asset(
+            'assets/images/Assets/name_logo.png',
+            height: 40,
+          ),
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.supervisor_account), text: 'Parent'),
@@ -74,8 +79,29 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [_buildParentLoginForm(), _buildChildLoginForm()],
+        body: Stack(
+          children: [
+            //Background image
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/Assets/login_bg.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+
+            Positioned.fill(
+              child: Container(
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+            ),
+
+            TabBarView(
+              children: [
+                _buildParentLoginForm(),
+                _buildChildLoginForm(),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -90,10 +116,14 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
-            const Text(
-              'Log in with parent',
+            Text(
+              'Log in as parent',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: GoogleFonts.quicksand(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -153,7 +183,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : () => _handleLogin(_parentFormKey),
               style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD6E0), //pastel pink
+                foregroundColor: const Color(0xFF5A3E36),
                 padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(
+                    color: Color(0xFFE8AFC1), // soft border
+                    width: 1.5,
+                  ),
+                ),
+                elevation: 0,
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -161,7 +201,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Login', style: TextStyle(fontSize: 16)),
+                  : Text(
+                    'Login', 
+                    style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -178,10 +220,14 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
-            const Text(
-              'Log in with child',
+            Text(
+              'Log in as child',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: GoogleFonts.quicksand(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -230,7 +276,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : () => _handleLogin(_childFormKey),
               style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD6E0), // pastel pink
+                foregroundColor: const Color(0xFF5A3E36),
                 padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(
+                    color: Color(0xFFE8AFC1), // soft border
+                    width: 1.5,
+                  ),
+                ),
+                elevation: 0, // flat cute style
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -238,7 +294,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Login', style: TextStyle(fontSize: 16)),
+                  : Text(
+                    'Login', 
+                    style: GoogleFonts.quicksand(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
             ),
           ],
         ),

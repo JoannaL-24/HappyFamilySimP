@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -25,7 +26,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot Password')),
+      backgroundColor: const Color(0xFFFFF6E8),
+      appBar: AppBar(
+        backgroundColor: const Color(0xffebdfcc),
+        title: Text(
+          'Forgot Password',
+          style: GoogleFonts.quicksand(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF5A3E36), //soft dark brown
+          ),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -69,6 +80,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     if (mounted) setState(() => _loading = false);
                   }
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD6E0),
+                  foregroundColor: const Color(0xFF5A3E36),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(
+                      color: Color(0xFFE8AFC1),
+                      width: 1.5,
+                    ),
+                  ),
+                  elevation: 0,
+                ),
                 child: _loading
                     ? const SizedBox(
                         width: 18,

@@ -5,6 +5,7 @@ import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -220,14 +221,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF6E8),
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: const Color(0xffebdfcc),
+        title: Text(
           'Edit Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
         ),
         centerTitle: true,
         foregroundColor: colorScheme.onPrimaryContainer,
-        backgroundColor: colorScheme.surfaceContainer,
         elevation: 1,
       ),
       body: SingleChildScrollView(
@@ -344,14 +349,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _cancelEdit,
-                      child: const Text('Cancel'),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFA8E6CF), width: 2),
+                        backgroundColor: const Color(0xFFE8FFF6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child:Text(
+                        'Cancel',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF5A3E36),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
+
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _saveEnabled ? _updateProfile : null,
-                      child: const Text('Save Changes'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFD6E0),
+                        foregroundColor: const Color(0xFF5A3E36),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          side: const BorderSide(
+                            color: Color(0xFFE8AFC1),
+                            width: 1.5,
+                          ),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Save Changes',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF5A3E36),
+                        ),
+                      ),
                     ),
                   ),
                 ],

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ManageChildrenScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -207,10 +208,15 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF6E8),
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: const Color(0xffebdfcc),
+        title: Text(
           'Family Management',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
         ),
         centerTitle: true,
         actions: [
@@ -222,7 +228,6 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           const SizedBox(width: 8),
         ],
         foregroundColor: colorScheme.onPrimaryContainer,
-        backgroundColor: colorScheme.surfaceContainer,
         elevation: 1,
       ),
       body: RefreshIndicator(

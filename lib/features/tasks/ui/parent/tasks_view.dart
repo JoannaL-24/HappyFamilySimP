@@ -7,6 +7,7 @@ import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ParentTasksScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -131,13 +132,19 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF6E8),
       appBar: AppBar(
         centerTitle: true,
+        backgroundColor: const Color(0xffebdfcc),
         title: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
             _isSelectionMode ? "${_selectedTaskIds.length} Selected" : "Tasks",
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: GoogleFonts.quicksand(
+                // fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
           ),
         ),
         actions: [
@@ -174,7 +181,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           ],
         ],
         foregroundColor: colorScheme.onPrimaryContainer,
-        backgroundColor: colorScheme.surfaceContainer,
         elevation: 1,
       ),
       body: _isLoadingTasks

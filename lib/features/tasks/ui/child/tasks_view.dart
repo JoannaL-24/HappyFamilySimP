@@ -6,6 +6,7 @@ import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/tasks/data/child/tasks_repository.dart';
 import 'package:logger/logger.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 var logger = Logger();
 
@@ -131,14 +132,18 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF6E8),
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: const Color(0xffebdfcc),
+        title: Text(
           'My Tasks',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.quicksand(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF5A3E36), //soft dark brown
+          ),
         ),
         centerTitle: true,
         foregroundColor: colorScheme.onPrimaryContainer,
-        backgroundColor: colorScheme.surfaceContainer,
         elevation: 1,
       ),
       body: RefreshIndicator(

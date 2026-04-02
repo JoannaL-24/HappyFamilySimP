@@ -4,6 +4,7 @@ import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/approval/data/approval_repository.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ParentApprovalScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -262,13 +263,17 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF6E8),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Pending Approvals',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5A3E36), //soft dark brown
+              ),
         ),
         centerTitle: true,
-        backgroundColor: colorScheme.surfaceContainer,
+        backgroundColor: const Color(0xffebdfcc),
         elevation: 1,
       ),
       body: RefreshIndicator(

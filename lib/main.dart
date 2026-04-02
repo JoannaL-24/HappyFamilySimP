@@ -139,7 +139,7 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
       title: 'Happy Family Sim',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A3E36)),
         useMaterial3: true,
       ),
       routerConfig: createRouter(

@@ -48,7 +48,7 @@ class WelcomeScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20), 
                         side: const BorderSide(
-                          color: Color(0xFF5A3E36),
+                          color: Color(0xFFE8AFC1),
                           width: 1.5,
                         ),// softer corners
                       ),
