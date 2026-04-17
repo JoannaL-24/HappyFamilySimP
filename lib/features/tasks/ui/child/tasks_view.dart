@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:happy_family_sim/core/utils.dart';
-import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/tasks/data/child/tasks_repository.dart';
+import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 var logger = Logger();
 
@@ -23,6 +26,101 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   final ChildTaskRepository _taskRepository = ChildTaskRepository();
   bool _isLoading = true;
   List<TaskOccurrence> _tasks = [];
+
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _handleProofSubmission(TaskOccurrence task) async {
+    XFile? selectedImage;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              selectedImage == null ? 'Take a Photo' : 'Look Good?',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.quicksand(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selectedImage == null) ...[
+                  const Icon(Icons.camera_enhance, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Take a photo of your hard work!',
+                    textAlign: TextAlign.center,
+                  ),
+                ] else ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      File(selectedImage!.path),
+                      height: 250,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              if (selectedImage == null) ...[
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final XFile? photo = await _picker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 50,
+                    );
+                    if (photo != null) {
+                      final File file = File(photo.path);
+                      final int size = await file.length();
+                      logger.i('Path: ${photo.path} | Size: ${(size / 1024).toStringAsFixed(2)} KB');
+                      
+                      setDialogState(() => selectedImage = photo);
+                    }
+                  },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Capture'),
+                ),
+              ] else ...[
+                // Changed from Retake to Cancel
+                OutlinedButton.icon(
+                  onPressed: () {
+                    // This sets the image back to null so they see the "Capture" state again
+                    setDialogState(() => selectedImage = null);
+                    Navigator.pop(context);
+                    logger.i('User cancelled the photo choice.');
+                  },
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cancel'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // _markTaskAsDone(task.id, proofPath: selectedImage!.path);
+                    _markTaskAsDone(task.id);
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Submit'),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -93,33 +191,37 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   }
 
   Future<void> _confirmMarkAsDone(TaskOccurrence task) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Finish Task?'),
-        content: Text('Are you sure you finished "${task.template?.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not yet'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+    if (task.template?.proofRequired == false) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Finish Task?'),
+          content: Text('Are you sure you finished "${task.template?.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Not yet'),
             ),
-            child: const Text('Yes!'),
-          ),
-        ],
-      ),
-    );
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Yes!'),
+            ),
+          ],
+        ),
+      );
 
-    if (confirmed == true) {
-      await _markTaskAsDone(task.id);
+      if (confirmed == true) {
+        await _markTaskAsDone(task.id);
+      }
+    } else {
+      await _handleProofSubmission(task);
     }
   }
 
@@ -363,6 +465,31 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Show a badge in the detail sheet if proof is needed
+            if (template.proofRequired && !isDone)
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withAlpha(100),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.camera_alt, size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'This task needs a photo proof!',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Rewards Section
             Container(
               padding: const EdgeInsets.all(16),
@@ -407,9 +534,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'I Finished It!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                child: Text(
+                  template.proofRequired ? 'Finish & Take Photo' : 'I Finished It!',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               )
             else
