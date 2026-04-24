@@ -30,7 +30,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _handleProofSubmission(TaskOccurrence task) async {
-    XFile? selectedImage;
+    File? selectedImage;
 
     await showDialog(
       context: context,
@@ -38,7 +38,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Text(
               selectedImage == null ? 'Take a Photo' : 'Look Good?',
               textAlign: TextAlign.center,
@@ -48,7 +50,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selectedImage == null) ...[
-                  const Icon(Icons.camera_enhance, size: 64, color: Colors.grey),
+                  const Icon(
+                    Icons.camera_enhance,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Take a photo of your hard work!',
@@ -69,9 +75,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             actionsAlignment: MainAxisAlignment.center,
             actions: [
               if (selectedImage == null) ...[
-                TextButton(
+                OutlinedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Close'),
                 ),
                 FilledButton.icon(
                   onPressed: () async {
@@ -82,22 +89,21 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                     if (photo != null) {
                       final File file = File(photo.path);
                       final int size = await file.length();
-                      logger.i('Path: ${photo.path} | Size: ${(size / 1024).toStringAsFixed(2)} KB');
-                      
-                      setDialogState(() => selectedImage = photo);
+                      logger.i(
+                        'Path: ${photo.path} | Size: ${(size / 1024).toStringAsFixed(2)} KB',
+                      );
+
+                      setDialogState(() => selectedImage = file);
                     }
                   },
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Capture'),
                 ),
               ] else ...[
-                // Changed from Retake to Cancel
                 OutlinedButton.icon(
                   onPressed: () {
-                    // This sets the image back to null so they see the "Capture" state again
                     setDialogState(() => selectedImage = null);
                     Navigator.pop(context);
-                    logger.i('User cancelled the photo choice.');
                   },
                   icon: const Icon(Icons.close),
                   label: const Text('Cancel'),
@@ -107,8 +113,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    // _markTaskAsDone(task.id, proofPath: selectedImage!.path);
-                    _markTaskAsDone(task.id);
+                    _markTaskAsDone(task.id, selectedImage);
                   },
                   style: FilledButton.styleFrom(backgroundColor: Colors.green),
                   icon: const Icon(Icons.check),
@@ -174,12 +179,13 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     }
   }
 
-  Future<void> _markTaskAsDone(int taskId) async {
+  Future<void> _markTaskAsDone(int taskId, File? selectedImage) async {
     final index = _tasks.indexWhere((t) => t.id == taskId);
     if (index == -1) return;
 
     try {
-      await _taskRepository.updateTaskStatus(taskId, 'PEND');
+      // await _taskRepository.updateTaskStatus(taskId, 'PEND');
+      await _taskRepository.markTaskAsDone(taskId, 'PEND', selectedImage);
       await _fetchTasks();
     } catch (e) {
       if (mounted) {
@@ -195,7 +201,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text('Finish Task?'),
           content: Text('Are you sure you finished "${task.template?.title}"?'),
           actions: [
@@ -218,11 +226,45 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       );
 
       if (confirmed == true) {
-        await _markTaskAsDone(task.id);
+        await _markTaskAsDone(task.id, null);
       }
     } else {
       await _handleProofSubmission(task);
     }
+  }
+
+  void _showZoomableImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            // The interactive part
+            SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: InteractiveViewer(
+                clipBehavior: Clip.none,
+                minScale: 1.0,
+                maxScale: 5.0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(url, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            // Close button
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -465,11 +507,79 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Show a badge in the detail sheet if proof is needed
+            // photo Prrof
+            if (isDone &&
+                task.proofUrl != null &&
+                task.proofUrl!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withAlpha(100),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Photo Proof:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _showZoomableImage(context, task.proofUrl!),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          task.proofUrl!,
+                          height: 250,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 250,
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                height: 250,
+                                width: double.infinity,
+                                color: theme.colorScheme.errorContainer,
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.broken_image, color: Colors.red),
+                                    Text(
+                                      'Could not load image',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // a badge to show if proof is needed
             if (template.proofRequired && !isDone)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer.withAlpha(100),
                   borderRadius: BorderRadius.circular(12),
@@ -477,7 +587,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.camera_alt, size: 18, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.camera_alt,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'This task needs a photo proof!',
@@ -535,8 +649,13 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ),
                 ),
                 child: Text(
-                  template.proofRequired ? 'Finish & Take Photo' : 'I Finished It!',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  template.proofRequired
+                      ? 'Finish & Take Photo'
+                      : 'I Finished It!',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               )
             else

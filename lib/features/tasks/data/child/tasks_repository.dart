@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
@@ -44,6 +46,47 @@ class ChildTaskRepository {
     } catch (e) {
       logger.e('Error updating task status: $e');
       throw Exception('Failed to update task status.');
+    }
+  }
+
+  Future<void> markTaskAsDone(
+    int occurrenceId,
+    String status, 
+    File? selectedImage,
+  ) async {
+    try {
+      String? proofUrl;
+
+      if (selectedImage != null) {
+        final imagePath = selectedImage.path;
+        final file = File(imagePath);
+        final fileExt = imagePath.split('.').last;
+        final path = 'proofs/$occurrenceId.$fileExt';
+
+        await _supabase.storage
+            .from('task_proofs')
+            .upload(path, file, fileOptions: const FileOptions(upsert: true));
+
+        proofUrl = _supabase.storage.from('task_proofs').getPublicUrl(path);
+      }
+
+      final updateData = {'status': status};
+      if (proofUrl != null) {
+        updateData['proof_url'] = proofUrl;
+      }
+
+      final data = await _supabase
+          .from('task_occurrence')
+          .update(updateData)
+          .eq('id', occurrenceId)
+          .select();
+
+      if ((data as List).isEmpty) {
+        throw Exception('No task found to update.');
+      }
+    } catch (e) {
+      logger.e('Error updating task status/uploading proof: $e');
+      throw Exception('Failed to submit task.');
     }
   }
 

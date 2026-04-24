@@ -10,6 +10,7 @@ class TaskOccurrence {
   final int templateId;
   final TaskTemplate? template; 
   final String? feedback;
+  final String? proofUrl;
 
   TaskOccurrence({
     required this.id,
@@ -21,6 +22,7 @@ class TaskOccurrence {
     required this.templateId,
     required this.template,
     this.feedback,
+    this.proofUrl,
   });
 
   // fetching supporting method
@@ -39,6 +41,7 @@ class TaskOccurrence {
           ? TaskTemplate.fromJson(json['task_template'])
           : null,
       feedback: json['feedback'],
+      proofUrl: json['proof_url'],
     );
   }
 
