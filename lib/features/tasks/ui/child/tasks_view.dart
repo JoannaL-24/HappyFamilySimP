@@ -242,7 +242,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
         child: Stack(
           alignment: Alignment.topRight,
           children: [
-            // The interactive part
             SizedBox(
               width: double.infinity,
               height: MediaQuery.of(context).size.height * 0.7,
@@ -256,7 +255,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 ),
               ),
             ),
-            // Close button
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 30),
               onPressed: () => Navigator.pop(context),
@@ -434,6 +432,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   void _onTaskTap(TaskOccurrence task) {
     showModalBottomSheet(
       context: context,
+      scrollControlDisabledMaxHeightRatio: 0.7,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -443,6 +442,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
 
   Widget _buildTaskDetailSheet(TaskOccurrence task) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final template = task.template!;
     final isDone = task.status == 'PEND';
 
@@ -462,7 +462,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-
             // Due Date
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -483,7 +482,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               ],
             ),
             const SizedBox(height: 20),
-
             // Description Box
             Container(
               padding: const EdgeInsets.all(16),
@@ -506,7 +504,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               ),
             ),
             const SizedBox(height: 24),
-
             // photo Prrof
             if (isDone &&
                 task.proofUrl != null &&
@@ -566,12 +563,20 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Tap photo to zoom',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.outline,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
             ],
-
             // a badge to show if proof is needed
             if (template.proofRequired && !isDone)
               Container(
@@ -603,7 +608,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ],
                 ),
               ),
-
             // Rewards Section
             Container(
               padding: const EdgeInsets.all(16),
@@ -632,7 +636,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               ),
             ),
             const SizedBox(height: 32),
-
             // Action Button
             if (!isDone)
               ElevatedButton(

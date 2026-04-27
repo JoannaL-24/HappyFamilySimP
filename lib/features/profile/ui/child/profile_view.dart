@@ -7,41 +7,31 @@ import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ChildProfileScreen extends StatefulWidget {
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
 
-  const ProfileScreen({
+  const ChildProfileScreen({
     super.key,
     required this.authRepository,
     required this.profileRepository,
   });
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ChildProfileScreen> createState() => _ChildProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ChildProfileScreenState extends State<ChildProfileScreen> {
   final _nameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   File? _selectedImage;
   String? _originalName;
   String? _originalAvatarUrl;
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
   bool _isLoading = true;
   bool get _saveEnabled {
     final nameChanged = _nameController.text.trim() != _originalName;
     final imageChanged = _selectedImage != null;
 
-    final passwordAttempted = _passwordController.text.isNotEmpty;
-    final passwordReady =
-        passwordAttempted &&
-        _confirmPasswordController.text == _passwordController.text &&
-        Utils.passwordValidator(_passwordController.text) == null;
-
-    return nameChanged || imageChanged || passwordReady;
+    return nameChanged || imageChanged;
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -50,8 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _nameController.addListener(_onTextChanged);
-    _passwordController.addListener(_onTextChanged);
-    _confirmPasswordController.addListener(_onTextChanged);
     _fetchProfileData();
   }
 
@@ -85,8 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _cancelEdit() {
     setState(() {
       _nameController.text = _originalName ?? "";
-      _passwordController.clear();
-      _confirmPasswordController.clear();
       _selectedImage = null;
     });
   }
@@ -128,21 +114,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? _nameController.text.trim()
             : null;
 
-        final passwordToUpdate = _passwordController.text.isNotEmpty
-            ? _passwordController.text
-            : null;
-
         final resultMessage = await widget.profileRepository.updateUserProfile(
           userId,
           nameToUpdate,
-          passwordToUpdate,
+          null,
           _selectedImage,
         );
 
         if (mounted) {
           setState(() {
-            _passwordController.clear();
-            _confirmPasswordController.clear();
             _selectedImage = null;
             _formKey.currentState?.reset();
           });
@@ -280,67 +260,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-
-              // new password
-              TextFormField(
-                controller: _passwordController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                obscureText: !_isPasswordVisible,
-                decoration: InputDecoration(
-                  labelText: 'New Password',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(
-                      () => _isPasswordVisible = !_isPasswordVisible,
-                    ),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return null;
-                  }
-                  return Utils.passwordValidator(value);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // confirm new password
-              TextFormField(
-                controller: _confirmPasswordController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                obscureText: !_isConfirmPasswordVisible,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isConfirmPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(
-                      () => _isConfirmPasswordVisible =
-                          !_isConfirmPasswordVisible,
-                    ),
-                  ),
-                ),
-                validator: (value) {
-                  if (_passwordController.text.isNotEmpty) {
-                    if (value != _passwordController.text) {
-                      return 'Passwords do not match';
-                    }
-                  }
-                  return null;
-                },
-              ),
               const SizedBox(height: 40),
 
               // action buttons
@@ -423,12 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.removeListener(_onTextChanged);
-    _passwordController.removeListener(_onTextChanged);
-    _confirmPasswordController.removeListener(_onTextChanged);
-
     _nameController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 }

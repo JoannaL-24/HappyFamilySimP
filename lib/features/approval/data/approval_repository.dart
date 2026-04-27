@@ -36,19 +36,6 @@ class ApprovalRepository {
     }
   }
 
-  // Future<void> approveTask(int occurrenceId) async {
-  //   try {
-  //     await _supabase
-  //         .from('task_occurrence')
-  //         .update({'status': 'COMP'})
-  //         .eq('id', occurrenceId);
-  //
-  //   // TODO: increment reward for child
-  //   } catch (e) {
-  //     logger.e('Error approving task: $e');
-  //     throw Exception('Failed to approve task.');
-  //   }
-  // }
   Future<void> approveTask(TaskOccurrence task) async {
     final template = task.template;
     if (template == null) throw Exception('Task template data is missing.');

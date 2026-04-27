@@ -49,25 +49,14 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
     }
   }
 
-  // Future<void> _approveTask(TaskOccurrence task) async {
-  //   try {
-  //     await _approvalRepository.approveTask(task.id);
-  //     if (mounted) {
-  //       Utils.showSuccess('Task "${task.template?.title}" from "${task.childName}" approved!');
-  //       _fetchPendingTasks();
-  //     }
-  //   } catch (e) {
-  //     Utils.showError('Could not approve task. Please try again.');
-  //   }
-  // }
   Future<void> _approveTask(TaskOccurrence task) async {
     try {
       // Pass the whole task object instead of just the ID
-      await _approvalRepository.approveTask(task); 
-      
+      await _approvalRepository.approveTask(task);
+
       if (mounted) {
         Utils.showSuccess(
-          'Approved! ${task.childName} received ${task.template?.resourceAmount} ${task.template?.resource} points!'
+          'Approved! ${task.childName} received ${task.template?.resourceAmount} ${task.template?.resource} points!',
         );
         _fetchPendingTasks();
       }
@@ -80,7 +69,9 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
     try {
       await _approvalRepository.rejectTask(task.id, feedback);
       if (mounted) {
-        Utils.showSuccess('Task "${task.template?.title}" from "${task.childName}" rejected.');
+        Utils.showSuccess(
+          'Task "${task.template?.title}" from "${task.childName}" rejected.',
+        );
         _fetchPendingTasks();
       }
     } catch (e) {
@@ -91,7 +82,7 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
   void _showApprovalDetails(TaskOccurrence task) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
+      scrollControlDisabledMaxHeightRatio: 0.7,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -113,7 +104,9 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Please provide feedback on why this task is being rejected.'),
+              const Text(
+                'Please provide feedback on why this task is being rejected.',
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: feedbackController,
@@ -160,6 +153,38 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
       Navigator.pop(context);
       await _rejectTask(task, confirmed);
     }
+  }
+
+  void _showZoomableImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: InteractiveViewer(
+                clipBehavior: Clip.none,
+                minScale: 1.0,
+                maxScale: 5.0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(url, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildApprovalDetailSheet(TaskOccurrence task) {
@@ -211,15 +236,16 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
             ),
             const SizedBox(height: 8),
             // description
-            Text(
-              template.description,
-              style: theme.textTheme.bodyLarge,
-            ),
+            Text(template.description, style: theme.textTheme.bodyLarge),
             const SizedBox(height: 16),
             // due date
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: theme.colorScheme.outline),
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: theme.colorScheme.outline,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Due: ${DateFormat('MMM d, h:mm a').format(task.dueDate)}',
@@ -229,6 +255,62 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                 ),
               ],
             ),
+            // photo proof
+            if (task.proofUrl != null && task.proofUrl!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => _showZoomableImage(context, task.proofUrl!),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    task.proofUrl!,
+                    height: 250,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 250,
+                        color: colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.3,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 250,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, color: Colors.red),
+                          SizedBox(height: 4),
+                          Text(
+                            'Could not load image',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Tap photo to zoom',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.outline,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
             Row(
               children: [
@@ -243,7 +325,13 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Reject', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Reject',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -261,7 +349,13 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Approve', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Approve',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -283,9 +377,9 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
         title: Text(
           'Pending Approvals',
           style: GoogleFonts.quicksand(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF5A3E36), //soft dark brown
-              ),
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF5A3E36), //soft dark brown
+          ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xffebdfcc),
@@ -296,13 +390,13 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _pendingTasks.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _pendingTasks.length,
-                    itemBuilder: (context, index) =>
-                        _buildApprovalCard(context, _pendingTasks[index]),
-                  ),
+            ? _buildEmptyState()
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _pendingTasks.length,
+                itemBuilder: (context, index) =>
+                    _buildApprovalCard(context, _pendingTasks[index]),
+              ),
       ),
     );
   }
@@ -315,10 +409,7 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: colorScheme.primary.withAlpha(50),
-          width: 1,
-        ),
+        side: BorderSide(color: colorScheme.primary.withAlpha(50), width: 1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
@@ -363,7 +454,10 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.orange.withAlpha(26),
                       borderRadius: BorderRadius.circular(8),

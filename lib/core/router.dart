@@ -12,7 +12,8 @@ import 'package:happy_family_sim/features/game/game_view.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
-import 'package:happy_family_sim/features/profile/ui/profile_view.dart';
+import 'package:happy_family_sim/features/profile/ui/parent/profile_view.dart';
+import 'package:happy_family_sim/features/profile/ui/child/profile_view.dart';
 import 'package:happy_family_sim/features/approval/ui/approval_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/child/tasks_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
@@ -62,7 +63,7 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/profile',
-          builder: (context, state) => ProfileScreen(
+          builder: (context, state) => ParentProfileScreen(
             authRepository: authRepository,
             profileRepository: profileRepository,
           ),
@@ -93,8 +94,8 @@ GoRouter createRouter(
     StatefulShellBranch(
       routes: [
         GoRoute(
-          path: '/parent/profile',
-          builder: (context, state) => ProfileScreen(
+          path: '/child/profile',
+          builder: (context, state) => ChildProfileScreen(
             authRepository: authRepository,
             profileRepository: profileRepository,
           ),
