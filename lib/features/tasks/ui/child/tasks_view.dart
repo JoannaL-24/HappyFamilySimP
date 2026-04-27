@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
@@ -184,7 +185,6 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     if (index == -1) return;
 
     try {
-      // await _taskRepository.updateTaskStatus(taskId, 'PEND');
       await _taskRepository.markTaskAsDone(taskId, 'PEND', selectedImage);
       await _fetchTasks();
     } catch (e) {
@@ -284,6 +284,12 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
         centerTitle: true,
         foregroundColor: colorScheme.onPrimaryContainer,
         elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Color(0xFF5A3E36)),
+            onPressed: () => context.go('/child/tasks/history'),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
@@ -302,118 +308,109 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   }
 
   Widget _buildTaskCard(BuildContext context, TaskOccurrence task) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isPending = task.status == 'PEND';
     final template = task.template!;
+    final proofRequired = template.proofRequired;
+    final colorscheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      color: isPending
-          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-          : colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: isPending
-              ? Colors.transparent
-              : colorScheme.primary.withAlpha(50),
-          width: 1,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: isPending ? 1 : 2,
+      color: isPending ? colorscheme.surfaceContainerLow.withAlpha(200) : colorscheme.surfaceContainerLow,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        leading: Transform.scale(
+          scale: 1.2,
+          child: Checkbox(
+            value: isPending,
+            onChanged: isPending ? null : (value) => _confirmMarkAsDone(task),
+            activeColor: Colors.green,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
         ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      elevation: isPending ? 0 : 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-        child: Row(
+        title: Text(
+          template.title,
+          style: GoogleFonts.quicksand(
+            fontWeight: FontWeight.bold,
+            decoration: isPending ? TextDecoration.lineThrough : null,
+            color: isPending ? Colors.grey : Colors.black87,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Checkbox for marking as done
-            Transform.scale(
-              scale: 1.2,
-              child: Checkbox(
-                value: isPending,
-                onChanged: isPending
-                    ? null
-                    : (value) => _confirmMarkAsDone(task),
-                activeColor: Colors.green,
-              ),
-            ),
-            // The rest of the card is clickable for details
-            Expanded(
-              child: InkWell(
-                onTap: () => _onTaskTap(task),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        template.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          decoration: isPending
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: isPending
-                              ? colorScheme.outline
-                              : colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          // The Date
-                          Flexible(
-                            child: Text(
-                              _formatDueDate(task.dueDate),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                          if (!isPending) ...[
-                            Text(
-                              ' • ',
-                              style: TextStyle(
-                                color: colorScheme.outlineVariant,
-                              ),
-                            ),
-                            // The Timer
-                            Flexible(
-                              child: TimeRemainingWidget(
-                                dueDate: task.dueDate,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ] else ...[
-                            // pending label
-                            Text(
-                              ' • ',
-                              style: TextStyle(
-                                color: colorScheme.outlineVariant,
-                              ),
-                            ),
-                            Text(
-                              'Pending Approval',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
+            Row(
+              children: [
+                Text(
+                  _formatDueDate(task.dueDate),
+                  style: GoogleFonts.quicksand(fontSize: 12),
                 ),
-              ),
+                if (!isPending) ...[
+                  Text(' • ', style: TextStyle(color: Colors.grey.shade400)),
+                  TimeRemainingWidget(
+                    dueDate: task.dueDate,
+                    style: GoogleFonts.quicksand(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ],
             ),
-            Icon(Icons.chevron_right, size: 20, color: colorScheme.outline),
-            const SizedBox(width: 8),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                if (isPending)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withAlpha(40),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Pending Approval',
+                      style: GoogleFonts.quicksand(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[800],
+                      ),
+                    ),
+                  ),
+                if (proofRequired && !isPending) ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withAlpha(40),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.camera_alt,
+                            size: 10, color: Colors.blue),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Photo Proof Needed',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: () => _onTaskTap(task),
       ),
     );
   }
@@ -432,7 +429,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   void _onTaskTap(TaskOccurrence task) {
     showModalBottomSheet(
       context: context,
-      scrollControlDisabledMaxHeightRatio: 0.7,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -441,173 +438,140 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   }
 
   Widget _buildTaskDetailSheet(TaskOccurrence task) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final template = task.template!;
-    final isDone = task.status == 'PEND';
+    final isPending = task.status == 'PEND';
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: SingleChildScrollView(
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (context, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             // Title
             Text(
               template.title,
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: GoogleFonts.quicksand(
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.start,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             // Due Date
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: theme.colorScheme.secondary,
+                  color: Colors.grey[600],
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Due: ${_formatDueDate(task.dueDate)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: GoogleFonts.quicksand(
+                    color: Colors.grey[600],
                     fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.secondary,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             // Description Box
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'What to do:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(template.description, style: theme.textTheme.bodyLarge),
-                ],
+            Text(
+              'What to do:',
+              style: GoogleFonts.quicksand(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              template.description,
+              style: GoogleFonts.quicksand(fontSize: 16),
+            ),
             const SizedBox(height: 24),
-            // photo Prrof
-            if (isDone &&
-                task.proofUrl != null &&
-                task.proofUrl!.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withAlpha(100),
-                  borderRadius: BorderRadius.circular(16),
+
+            // photo Proof
+            if (isPending && task.proofUrl != null && task.proofUrl!.isNotEmpty) ...[
+              Text(
+                'Your Photo Proof:',
+                style: GoogleFonts.quicksand(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Photo Proof:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () => _showZoomableImage(context, task.proofUrl!),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          task.proofUrl!,
-                          height: 250,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 250,
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 250,
-                                width: double.infinity,
-                                color: theme.colorScheme.errorContainer,
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.broken_image, color: Colors.red),
-                                    Text(
-                                      'Could not load image',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'Tap photo to zoom',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => _showZoomableImage(context, task.proofUrl!),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    task.proofUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Tap photo to zoom',
+                  style: GoogleFonts.quicksand(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
             ],
+
             // a badge to show if proof is needed
-            if (template.proofRequired && !isDone)
+            if (template.proofRequired && !isPending)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
                 padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
+                  vertical: 12,
+                  horizontal: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withAlpha(100),
+                  color: Colors.blue.withAlpha(30),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withAlpha(50)),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.camera_alt,
-                      size: 18,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'This task needs a photo proof!',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
+                    const Icon(Icons.camera_alt, size: 20, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This task needs a photo proof!',
+                        style: GoogleFonts.quicksand(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+
             // Rewards Section
             Container(
               padding: const EdgeInsets.all(16),
@@ -616,28 +580,37 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.amber.shade200),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  const Text(
-                    'Your Reward:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                      fontSize: 16,
+                  const Icon(Icons.stars, color: Colors.orange),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Reward:',
+                          style: GoogleFonts.quicksand(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                        Text(
+                          '${template.resourceAmount} ${template.resource} points!',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${template.resourceAmount} ${template.resource} points!',
-                    style: theme.textTheme.bodyLarge,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
             // Action Button
-            if (!isDone)
+            if (!isPending)
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
@@ -650,23 +623,30 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  elevation: 2,
                 ),
                 child: Text(
                   template.proofRequired
                       ? 'Finish & Take Photo'
                       : 'I Finished It!',
-                  style: const TextStyle(
+                  style: GoogleFonts.quicksand(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               )
             else
-              const Center(
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
                   'Task already finished! Waiting for approval.',
-                  style: TextStyle(
-                    color: Colors.green,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.quicksand(
+                    color: Colors.green[800],
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -674,9 +654,15 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(
+                'Close',
+                style: GoogleFonts.quicksand(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
           ],
         ),
       ),

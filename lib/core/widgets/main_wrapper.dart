@@ -35,7 +35,6 @@ class MainWrapper extends StatelessWidget {
   static const List<BottomNavigationBarItem> _childTabs = [
     BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Tasks'),
     BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Game'),
-    // BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: 'Shop'),
     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Me'),
   ];
 }
