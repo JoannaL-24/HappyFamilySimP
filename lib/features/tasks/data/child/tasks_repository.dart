@@ -30,6 +30,26 @@ class ChildTaskRepository {
     }
   }
 
+  Future<List<TaskOccurrence>> fetchTaskHistoryByChildId(String childId) async {
+    try {
+      final response = await _supabase
+          .from('task_occurrence')
+          .select('''*,
+            task_template!inner(*)
+          ''')
+          .eq('child_id', childId)
+          .inFilter('status', ['MISS', 'REJC', 'COMP'])
+          .order('due_date', ascending: true);
+
+      return (response as List)
+          .map((json) => TaskOccurrence.fromJson(json))
+          .toList();
+    } catch (e) {
+      logger.e('Error fetching task history for child: $e');
+      throw Exception('Failed to fetch task history for child.');
+    }
+  }
+
   // Update a task status (e.g., mark as NOTD, PEND, MISS, REJC, COMP)
   Future<void> updateTaskStatus(int occurrenceId, String status) async {
     try {

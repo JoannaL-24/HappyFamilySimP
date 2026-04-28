@@ -22,8 +22,9 @@ class ApprovalRepository {
 
       return (response as List).map((json) {
         final childData = json['child'] as Map<String, dynamic>?;
-        final String path = childData?['avatar_path'] ?? Constants.defaultAvatarPath;
-        
+        final String path =
+            childData?['avatar_path'] ?? Constants.defaultAvatarPath;
+
         String publicUrl = '';
         if (path.isNotEmpty) {
           publicUrl = _supabase.storage.from('avatars').getPublicUrl(path);
@@ -44,7 +45,10 @@ class ApprovalRepository {
       // 1. Update the task status to COMP (Completed)
       await _supabase
           .from('task_occurrence')
-          .update({'status': 'COMP'})
+          .update({
+            'status': 'COMP',
+            'approval_date': DateTime.now().toIso8601String(),
+          })
           .eq('id', task.id);
 
       // 2. Fetch the current resource balance for the child
@@ -56,7 +60,7 @@ class ApprovalRepository {
 
       // 3. Calculate new balance
       // template.resource is 'food', 'play', or 'clean' matching your table columns
-      final String resourceType = template.resource; 
+      final String resourceType = template.resource;
       final int currentAmount = resourceData[resourceType] ?? 0;
       final int newAmount = currentAmount + template.resourceAmount;
 
@@ -65,7 +69,6 @@ class ApprovalRepository {
           .from('resources')
           .update({resourceType: newAmount})
           .eq('child_id', task.childId);
-
     } catch (e) {
       logger.e('Error during task approval and resource increment: $e');
       throw Exception('Failed to approve task and reward resources.');
@@ -79,9 +82,9 @@ class ApprovalRepository {
           .update({
             'status': 'REJC',
             'feedback': feedback,
+            'approval_date': DateTime.now().toIso8601String(),
           })
           .eq('id', occurrenceId);
-
     } catch (e) {
       logger.e('Error rejecting task: $e');
       throw Exception('Failed to reject task.');

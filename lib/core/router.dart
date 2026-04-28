@@ -84,8 +84,11 @@ GoRouter createRouter(
           routes: [
             GoRoute(
               path: 'history',
-              builder: (context, state) => const ChildTaskHistoryScreen(),
+              builder: (context, state) => TaskHistoryScreen(
+                authRepository: authRepository,
+              ),
             ),
+
           ],
         ),
       ],

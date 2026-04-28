@@ -11,6 +11,7 @@ class TaskOccurrence {
   final TaskTemplate? template; 
   final String? feedback;
   final String? proofUrl;
+  final DateTime? approvalDate;
 
   TaskOccurrence({
     required this.id,
@@ -23,6 +24,7 @@ class TaskOccurrence {
     required this.template,
     this.feedback,
     this.proofUrl,
+    this.approvalDate,
   });
 
   // fetching supporting method
@@ -42,6 +44,9 @@ class TaskOccurrence {
           : null,
       feedback: json['feedback'],
       proofUrl: json['proof_url'],
+      approvalDate: json['approval_date'] != null
+          ? DateTime.parse(json['approval_date'])
+          : null,
     );
   }
 
@@ -54,6 +59,8 @@ class TaskOccurrence {
     String? childAvatar,
     TaskTemplate? template,
     String? feedback,
+    String? proofUrl,
+    DateTime? approvalDate,
   }) {
     return TaskOccurrence(
       id: id,
@@ -65,6 +72,8 @@ class TaskOccurrence {
       childAvatar: childAvatar ?? this.childAvatar,
       template: template ?? this.template,
       feedback: feedback ?? this.feedback,
+      proofUrl: proofUrl ?? this.proofUrl,
+      approvalDate: approvalDate ?? this.approvalDate,
     );
   }
 
