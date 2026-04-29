@@ -40,6 +40,48 @@ class TaskRepository {
     }).toList();
   }
 
+  // Fetch occurrences for analytics within a date range
+  Future<List<TaskOccurrence>> fetchAnalyticsData({
+    required String parentId,
+    String? childId,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final adjustedEnd = DateTime(end.year, end.month, end.day, 23, 59, 59);
+
+    var query = _supabase
+        .from('task_occurrence')
+        .select('''
+          *,
+          child:profiles!inner(id, name, avatar_path),
+          task_template!inner(
+            *,
+            task_recurrence(*)
+          )
+        ''')
+        .eq('task_template.parent_id', parentId)
+        .gte('due_date', start.toIso8601String())
+        .lte('due_date', adjustedEnd.toIso8601String());
+
+    if (childId != null && childId != 'All Children') {
+      query = query.eq('child_id', childId);
+    }
+
+    final response = await query.order('due_date', ascending: true);
+
+    return (response as List).map((json) {
+      final childData = json['child'] as Map<String, dynamic>?;
+      final String path = childData?['avatar_path'] ?? "default_avatar.png";
+
+      String publicUrl = '';
+      if (path.isNotEmpty) {
+        publicUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+      }
+
+      return TaskOccurrence.fromJson(json, publicUrl);
+    }).toList();
+  }
+
   // --- UPDATE TASK TEMPLATE ---
   // Use this when changing the title, description, or global dates
   Future<void> updateTemplate({

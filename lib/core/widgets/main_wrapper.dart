@@ -28,6 +28,7 @@ class MainWrapper extends StatelessWidget {
   static const List<BottomNavigationBarItem> _parentTabs = [
     BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Tasks'),
     BottomNavigationBarItem(icon: Icon(Icons.pending_actions), label: 'Approval'),
+    BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Analytics'),
     BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Manage'),
     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
   ];

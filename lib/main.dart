@@ -14,6 +14,8 @@ import 'package:happy_family_sim/features/game/data/game_repository.dart';
 import 'package:happy_family_sim/features/game/data/game_service.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/data/profile_service.dart';
+import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
+import 'package:happy_family_sim/features/analytics/data/analytics_repository.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -47,6 +49,8 @@ Future<void> main() async {
   final gameRepository = GameRepository(gameService);
   final cosmeticService = CosmeticService(supabase);
   final cosmeticRepository = CosmeticRepository(cosmeticService);
+  final taskRepository = TaskRepository();
+  final analyticsRepository = AnalyticsRepository(taskRepository);
 
   runApp(
     HappyFamilyApp(
@@ -55,6 +59,8 @@ Future<void> main() async {
       manageRepository: manageRepository,
       gameRepository: gameRepository,
       cosmeticRepository: cosmeticRepository,
+      taskRepository: taskRepository,
+      analyticsRepository: analyticsRepository,
     ),
   );
 }
@@ -65,6 +71,8 @@ class HappyFamilyApp extends StatefulWidget {
   final ManageRepository manageRepository;
   final GameRepository gameRepository;
   final CosmeticRepository cosmeticRepository;
+  final TaskRepository taskRepository;
+  final AnalyticsRepository analyticsRepository;
 
   const HappyFamilyApp({
     super.key,
@@ -73,6 +81,8 @@ class HappyFamilyApp extends StatefulWidget {
     required this.manageRepository,
     required this.gameRepository,
     required this.cosmeticRepository,
+    required this.taskRepository,
+    required this.analyticsRepository,
   });
 
   @override
@@ -148,6 +158,8 @@ class _HappyFamilyAppState extends State<HappyFamilyApp> {
         widget.manageRepository,
         widget.gameRepository,
         widget.cosmeticRepository,
+        widget.taskRepository,
+        widget.analyticsRepository,
         _currentRole,
         _updateRole,
       ),

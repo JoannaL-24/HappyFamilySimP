@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:happy_family_sim/core/constants.dart';
 import 'package:happy_family_sim/core/widgets/main_wrapper.dart';
+import 'package:happy_family_sim/features/analytics/data/analytics_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/auth/ui/login_view.dart';
 import 'package:happy_family_sim/features/auth/ui/forgot_password_view.dart';
@@ -11,10 +12,14 @@ import 'package:happy_family_sim/features/game/data/game_repository.dart';
 import 'package:happy_family_sim/features/game/game_view.dart';
 import 'package:happy_family_sim/features/management/data/manage_repository.dart';
 import 'package:happy_family_sim/features/management/ui/manage_view.dart';
+import 'package:happy_family_sim/features/analytics/ui/analytics_entry_view.dart';
+import 'package:happy_family_sim/features/analytics/ui/task_report_view.dart';
+import 'package:happy_family_sim/features/analytics/ui/task_statistics_view.dart';
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/ui/parent/profile_view.dart';
 import 'package:happy_family_sim/features/profile/ui/child/profile_view.dart';
 import 'package:happy_family_sim/features/approval/ui/approval_view.dart';
+import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
 import 'package:happy_family_sim/features/tasks/ui/child/tasks_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/child/task_history_view.dart';
 import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
@@ -25,6 +30,8 @@ GoRouter createRouter(
   ManageRepository manageRepository,
   GameRepository gameRepository,
   CosmeticRepository cosmeticRepository,
+  TaskRepository taskRepository,
+  AnalyticsRepository analyticsRepository,
   String userRole,
   Function(String) onLoginSucess,
 ) {
@@ -33,9 +40,8 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/tasks',
-          builder: (context, state) => ParentTasksScreen(
-            authRepository : authRepository,
-          ),
+          builder: (context, state) =>
+              ParentTasksScreen(authRepository: authRepository),
         ),
       ],
     ),
@@ -43,9 +49,30 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/parent/approval',
-          builder: (context, state) => ParentApprovalScreen(
-            authRepository: authRepository,
-          ),
+          builder: (context, state) =>
+              ParentApprovalScreen(authRepository: authRepository),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: '/parent/analytics',
+          builder: (context, state) => const AnalyticsEntryScreen(),
+          routes: [
+            GoRoute(
+              path: 'report',
+              builder: (context, state) => TaskReportScreen(
+                authRepository: authRepository,
+                manageRepository: manageRepository,
+                analyticsRepository: analyticsRepository,
+              ),
+            ),
+            GoRoute(
+              path: 'statistics',
+              builder: (context, state) => const TaskStatisticsScreen(),
+            ),
+          ],
         ),
       ],
     ),
@@ -78,17 +105,14 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/child/tasks',
-          builder: (context, state) => ChildTasksScreen(
-            authRepository: authRepository,
-          ),
+          builder: (context, state) =>
+              ChildTasksScreen(authRepository: authRepository),
           routes: [
             GoRoute(
               path: 'history',
-              builder: (context, state) => TaskHistoryScreen(
-                authRepository: authRepository,
-              ),
+              builder: (context, state) =>
+                  TaskHistoryScreen(authRepository: authRepository),
             ),
-
           ],
         ),
       ],
@@ -97,7 +121,10 @@ GoRouter createRouter(
       routes: [
         GoRoute(
           path: '/chlid/game',
-          builder: (context, state) => GameScreen(gameRepository: gameRepository, cosmeticRepository: cosmeticRepository),
+          builder: (context, state) => GameScreen(
+            gameRepository: gameRepository,
+            cosmeticRepository: cosmeticRepository,
+          ),
         ),
       ],
     ),
@@ -147,13 +174,15 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: 'game',
-            builder: (context, state) => GameScreen(gameRepository: gameRepository, cosmeticRepository: cosmeticRepository),
+            builder: (context, state) => GameScreen(
+              gameRepository: gameRepository,
+              cosmeticRepository: cosmeticRepository,
+            ),
           ),
           GoRoute(
             path: 'forgot-password',
-            builder: (context, state) => ForgotPasswordScreen(
-              authRepository: authRepository,
-            ),
+            builder: (context, state) =>
+                ForgotPasswordScreen(authRepository: authRepository),
           ),
         ],
       ),
