@@ -150,6 +150,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
 
       final result = await _taskRepository.fetchTasksByChildId(userId);
 
+      // NOTE: Supabase Cron job has implemented to mark missed tasks, but
+      // keeping this here as a backup in case the cron job fails or the app
+      // is open for a long time without refreshing
       await _handleMissedTasks(result);
 
       final updatedResult = await _taskRepository.fetchTasksByChildId(userId);
@@ -317,7 +320,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: isPending ? 1 : 2,
-      color: isPending ? colorscheme.surfaceContainerLow.withAlpha(200) : colorscheme.surfaceContainerLow,
+      color: isPending
+          ? colorscheme.surfaceContainerLow.withAlpha(200)
+          : colorscheme.surfaceContainerLow,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         leading: Transform.scale(
@@ -326,8 +331,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             value: isPending,
             onChanged: isPending ? null : (value) => _confirmMarkAsDone(task),
             activeColor: Colors.green,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
         ),
         title: Text(
@@ -364,8 +370,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               children: [
                 if (isPending)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.orange.withAlpha(40),
                       borderRadius: BorderRadius.circular(8),
@@ -381,8 +389,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ),
                 if (proofRequired && !isPending) ...[
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.withAlpha(40),
                       borderRadius: BorderRadius.circular(8),
@@ -390,8 +400,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.camera_alt,
-                            size: 10, color: Colors.blue),
+                        const Icon(
+                          Icons.camera_alt,
+                          size: 10,
+                          color: Colors.blue,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Photo Proof Needed',
@@ -476,11 +489,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             // Due Date
             Row(
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.grey[600],
-                ),
+                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 8),
                 Text(
                   'Due: ${_formatDueDate(task.dueDate)}',
@@ -508,7 +517,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             const SizedBox(height: 24),
 
             // photo Proof
-            if (isPending && task.proofUrl != null && task.proofUrl!.isNotEmpty) ...[
+            if (isPending &&
+                task.proofUrl != null &&
+                task.proofUrl!.isNotEmpty) ...[
               Text(
                 'Your Photo Proof:',
                 style: GoogleFonts.quicksand(
