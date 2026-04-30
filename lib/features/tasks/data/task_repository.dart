@@ -79,11 +79,6 @@ class TaskRepository {
     required int id,
     required String parentId,
   }) async {
-    // await _supabase
-    //     .from('task_template')
-    //     .update({'category_id': null})
-    //     .eq('category_id', id)
-    //     .eq('parent_id', parentId);
 
     await _supabase
         .from('task_category')
