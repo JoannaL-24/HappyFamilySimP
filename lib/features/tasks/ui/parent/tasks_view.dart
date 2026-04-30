@@ -14,6 +14,7 @@ import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 part '../../model/recurrence_helper_models.dart';
 part 'tasks_view_task_list_widgets.dart';
@@ -1051,21 +1052,26 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         Text("Resource", style: theme.textTheme.labelLarge),
                         const SizedBox(height: 8),
                         SegmentedButton<String?>(
-                          segments: const [
-                            ButtonSegment(
+                          segments: [
+                            const ButtonSegment(
                               value: 'food',
                               label: Text('Food'),
                               icon: Icon(Icons.fastfood),
                             ),
-                            ButtonSegment(
+                            const ButtonSegment(
                               value: 'play',
                               label: Text('Play'),
                               icon: Icon(Icons.sports_esports),
                             ),
-                            ButtonSegment(
+                            const ButtonSegment(
                               value: 'clean',
                               label: Text('Clean'),
                               icon: Icon(Icons.cleaning_services),
+                            ),
+                            ButtonSegment(
+                              value: 'box_pieces',
+                              label: null,
+                              icon: Icon(Symbols.box_add, weight:700,),  
                             ),
                           ],
                           selected: selectedResource == null

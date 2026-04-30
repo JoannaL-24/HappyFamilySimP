@@ -36,6 +36,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   RealtimeChannel? _reviewChannel;
   bool _isCheckingReviewStatuses = false;
   int? _visibleExpirationReminderId;
+  DateTime _selectedDate = DateTime.now();
 
   final ImagePicker _picker = ImagePicker();
 
@@ -566,42 +567,270 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final selectedTasks = _tasksForSelectedDate;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF6E8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xffebdfcc),
-        title: Text(
-          'My Tasks',
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF5A3E36), //soft dark brown
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  children: [
+                    _buildQuestHeader(),
+                    const SizedBox(height: 16),
+                    _buildDateNavigator(),
+                    const SizedBox(height: 18),
+                    _buildProgressPanel(selectedTasks),
+                    const SizedBox(height: 18),
+                    if (selectedTasks.isEmpty)
+                      _buildEmptyState()
+                    else ..._buildQuestSections(selectedTasks),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestHeader() {
+    return Row(
+      children: [
+        const SizedBox(width: 44),
+        Expanded(
+          child: Text(
+            'My Quests',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.pixelifySans(
+              fontWeight: FontWeight.w500,
+              fontSize: 28,
+              color: const Color(0xFF5A3E36),
+            ),
           ),
         ),
-        centerTitle: true,
-        foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 1,
-        actions: [
+        _PixelIconButton(
+          tooltip: 'Quest history',
+          icon: Icons.history_edu,
+          onPressed: () => context.go('/child/tasks/history'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateNavigator() {
+    return _PixelPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
+        children: [
           IconButton(
-            icon: const Icon(Icons.history, color: Color(0xFF5A3E36)),
-            onPressed: () => context.go('/child/tasks/history'),
+            tooltip: 'Previous day',
+            onPressed: () => _changeSelectedDate(-1),
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: _pickQuestDate,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  _selectedDateLabel(),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.quicksand(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF5A3E36),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Next day',
+            onPressed: () => _changeSelectedDate(1),
+            icon: const Icon(Icons.chevron_right),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _tasks.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _tasks.length,
-                itemBuilder: (context, index) =>
-                    _buildTaskCard(context, _tasks[index]),
+    );
+  }
+
+  Widget _buildProgressPanel(List<TaskOccurrence> tasks) {
+    final finishedCount = tasks.where((task) => task.status == 'PEND').length;
+    final totalCount = tasks.length;
+    final progress = totalCount == 0 ? 0.0 : finishedCount / totalCount;
+
+    return Column(
+      children: [
+        Text(
+          '$finishedCount of $totalCount quests done!',
+          style: GoogleFonts.pixelifySans(
+            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            color: const Color(0xFF5A3E36),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _PixelProgressBar(value: progress),
+      ],
+    );
+  }
+
+  List<Widget> _buildQuestSections(List<TaskOccurrence> tasks) {
+    final pending = tasks.where((task) => task.status == 'PEND').toList();
+    final notDone = tasks.where((task) => task.status == 'NOTD').toList();
+    final sections = <Widget>[];
+
+    void addSection(String title, List<TaskOccurrence> sectionTasks) {
+      if (sectionTasks.isEmpty) return;
+
+      sections.add(_QuestSectionTitle(title: title));
+      sections.addAll(sectionTasks.map((task) => _buildQuestCard(context, task)));
+      sections.add(const SizedBox(height: 10));
+    }
+
+    addSection(
+      'Morning',
+      notDone.where((task) => task.dueDate.hour < 12).toList(),
+    );
+    addSection(
+      'Afternoon',
+      notDone
+          .where((task) => task.dueDate.hour >= 12 && task.dueDate.hour < 18)
+          .toList(),
+    );
+    addSection(
+      'Night',
+      notDone.where((task) => task.dueDate.hour >= 18).toList(),
+    );
+    addSection('Waiting for Approval', pending);
+
+    return sections;
+  }
+
+  Widget _buildQuestCard(BuildContext context, TaskOccurrence task) {
+    final isPending = task.status == 'PEND';
+    final template = task.template!;
+    final proofRequired = template.proofRequired;
+    final resourceColor = _resourceColor(template.resource);
+
+    return Opacity(
+      opacity: isPending ? 0.72 : 1,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _onTaskTap(task),
+            child: _PixelPanel(
+              padding: EdgeInsets.zero,
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 76,
+                      decoration: BoxDecoration(
+                        color: resourceColor.withAlpha(36),
+                        border: Border(
+                          right: BorderSide(
+                            color: const Color(0xFF5A3E36).withAlpha(80),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          _resourceIcon(template.resource),
+                          size: 34,
+                          color: resourceColor,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              template.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.quicksand(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                decoration:
+                                    isPending ? TextDecoration.lineThrough : null,
+                                color: isPending
+                                    ? Colors.grey.shade600
+                                    : const Color(0xFF3E2D28),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatDueDate(task.dueDate),
+                              style: GoogleFonts.quicksand(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF6E5A50),
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _RewardChip(
+                                  icon: _resourceIcon(template.resource),
+                                  label:
+                                      '${template.resourceAmount} ${template.resource}',
+                                  color: resourceColor,
+                                ),
+                                if (!isPending)
+                                  _CountdownChip(dueDate: task.dueDate),
+                                if (isPending)
+                                  _StatusChip(
+                                    label: 'Waiting Approval',
+                                    color: Colors.orange,
+                                    icon: Icons.hourglass_top,
+                                  ),
+                                if (proofRequired && !isPending)
+                                  _StatusChip(
+                                    label: 'Photo Proof',
+                                    color: Colors.blue,
+                                    icon: Icons.camera_alt,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _QuestActionButton(
+                        isPending: isPending,
+                        proofRequired: proofRequired,
+                        onPressed:
+                            isPending ? null : () => _confirmMarkAsDone(task),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: Colors.brown.shade300,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ),
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -724,6 +953,79 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     );
   }
 
+  List<TaskOccurrence> get _tasksForSelectedDate {
+    final tasks = _tasks
+        .where((task) => _isSameDate(task.dueDate, _selectedDate))
+        .toList();
+    tasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    return tasks;
+  }
+
+  bool _isSameDate(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
+  void _changeSelectedDate(int dayOffset) {
+    setState(() {
+      _selectedDate = _selectedDate.add(Duration(days: dayOffset));
+    });
+  }
+
+  Future<void> _pickQuestDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
+    );
+
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  String _selectedDateLabel() {
+    final now = DateTime.now();
+    if (_isSameDate(_selectedDate, now)) {
+      return 'Today';
+    }
+
+    final tomorrow = now.add(const Duration(days: 1));
+    if (_isSameDate(_selectedDate, tomorrow)) {
+      return DateFormat('EEE, MMM d').format(_selectedDate);
+    }
+
+    return DateFormat('EEE, MMM d').format(_selectedDate);
+  }
+
+  IconData _resourceIcon(String resource) {
+    switch (resource.toLowerCase()) {
+      case 'food':
+        return Icons.restaurant_rounded;
+      case 'play':
+        return Icons.sports_esports_rounded;
+      case 'clean':
+        return Icons.cleaning_services_rounded;
+      default:
+        return Icons.stars_rounded;
+    }
+  }
+
+  Color _resourceColor(String resource) {
+    switch (resource.toLowerCase()) {
+      case 'food':
+        return const Color(0xFFE8873D);
+      case 'play':
+        return const Color(0xFF4F83CC);
+      case 'clean':
+        return const Color(0xFF48A06D);
+      default:
+        return const Color(0xFFB274C8);
+    }
+  }
+
   String _formatDueDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -739,8 +1041,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFFFFF6E8),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       builder: (context) => _buildTaskDetailSheet(task),
     );
@@ -751,221 +1054,280 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     final isPending = task.status == 'PEND';
     final isCompleted = task.status == 'COMP';
     final isRejected = task.status == 'REJC';
+    final resourceColor = _resourceColor(template.resource);
+    final titleColor = const Color(0xFF5A3E36);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
+      initialChildSize: 0.68,
+      maxChildSize: 0.92,
       minChildSize: 0.4,
       expand: false,
       builder: (context, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 46,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+                  color: titleColor.withAlpha(90),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            // Title
+            const SizedBox(height: 18),
+            // Text(
+            //   'Quest Detail',
+            //   textAlign: TextAlign.center,
+            //   style: GoogleFonts.pixelifySans(
+            //     fontSize: 24,
+            //     fontWeight: FontWeight.w500,
+            //     color: titleColor,
+            //   ),
+            // ),
+            const SizedBox(height: 18),
             Text(
               template.title,
               style: GoogleFonts.quicksand(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: titleColor,
               ),
               textAlign: TextAlign.start,
             ),
-            const SizedBox(height: 8),
-            // Due Date
-            Row(
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  'Due: ${_formatDueDate(task.dueDate)}',
-                  style: GoogleFonts.quicksand(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                  ),
+                _MiniChip(
+                  icon: Icons.calendar_today_rounded,
+                  label: _formatDueDate(task.dueDate),
+                  color: const Color(0xFF6E5A50),
                 ),
-              ],
-            ),
-            if ((isCompleted || isRejected) && task.approvalDate != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(
-                    isRejected
+                if (!isPending && !isCompleted && !isRejected)
+                  _MiniChip(
+                    icon: Icons.timer_outlined,
+                    label: 'Time left',
+                    color: Colors.purple.shade500,
+                  ),
+                if ((isCompleted || isRejected) && task.approvalDate != null)
+                  _MiniChip(
+                    icon: isRejected
                         ? Icons.cancel_outlined
                         : Icons.check_circle_outline,
-                    size: 16,
-                    color: isRejected ? Colors.red[700] : Colors.green[700],
+                    label:
+                        '${isRejected ? 'Rejected' : 'Approved'} ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
+                    color: isRejected ? Colors.red.shade700 : Colors.green.shade700,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${isRejected ? 'Rejected' : 'Approved'}: ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
+              ],
+            ),
+            if (!isPending && !isCompleted && !isRejected) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.hourglass_bottom, size: 15, color: Colors.purple.shade500),
+                  const SizedBox(width: 6),
+                  TimeRemainingWidget(
+                    dueDate: task.dueDate,
                     style: GoogleFonts.quicksand(
-                      color: isRejected ? Colors.red[700] : Colors.green[700],
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.purple.shade500,
                     ),
                   ),
                 ],
               ),
             ],
-            const SizedBox(height: 24),
-            // Description Box
-            Text(
-              'What to do:',
-              style: GoogleFonts.quicksand(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            const SizedBox(height: 20),
+            _PixelPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.flag_rounded, color: titleColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        'What to do',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: titleColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    template.description.trim().isEmpty
+                        ? 'No description provided.'
+                        : template.description,
+                    style: GoogleFonts.quicksand(
+                      fontSize: 16,
+                      height: 1.3,
+                      color: const Color(0xFF3E2D28),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              template.description,
-              style: GoogleFonts.quicksand(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // photo Proof
             if ((isPending || isCompleted || isRejected) &&
                 task.proofUrl != null &&
                 task.proofUrl!.isNotEmpty) ...[
-              Text(
-                'Your Photo Proof:',
-                style: GoogleFonts.quicksand(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () => _showZoomableImage(context, task.proofUrl!),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    task.proofUrl!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  'Tap photo to zoom',
-                  style: GoogleFonts.quicksand(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // a badge to show if proof is needed
-            if (template.proofRequired &&
-                !isPending &&
-                !isCompleted &&
-                !isRejected)
-              Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withAlpha(30),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withAlpha(50)),
-                ),
-                child: Row(
+              _PixelPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.camera_alt, size: 20, color: Colors.blue),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    Row(
+                      children: [
+                        const Icon(Icons.camera_alt_rounded, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Your Photo Proof',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _showZoomableImage(context, task.proofUrl!),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          task.proofUrl!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
                       child: Text(
-                        'This task needs a photo proof!',
+                        'Tap photo to zoom',
                         style: GoogleFonts.quicksand(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+            ],
 
-            if (isRejected &&
-                task.feedback != null &&
-                task.feedback!.trim().isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.shade100),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            if (template.proofRequired &&
+                !isPending &&
+                !isCompleted &&
+                !isRejected)
+              _PixelPanel(
+                padding: const EdgeInsets.all(12),
+                child: Row(
                   children: [
-                    Text(
-                      'Parent Feedback:',
-                      style: GoogleFonts.quicksand(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red[800],
+                    const Icon(Icons.camera_alt_rounded, size: 22, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This quest needs photo proof.',
+                        style: GoogleFonts.quicksand(
+                          fontWeight: FontWeight.w900,
+                          color: Colors.blue.shade800,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      task.feedback!.trim(),
-                      style: GoogleFonts.quicksand(fontSize: 16),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+            if (template.proofRequired &&
+                !isPending &&
+                !isCompleted &&
+                !isRejected)
+              const SizedBox(height: 16),
+
+            if (isRejected &&
+                task.feedback != null &&
+                task.feedback!.trim().isNotEmpty) ...[
+              _PixelPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.feedback_rounded, color: Colors.red.shade700),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Parent Feedback',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.red.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      task.feedback!.trim(),
+                      style: GoogleFonts.quicksand(
+                        fontSize: 16,
+                        height: 1.3,
+                        color: const Color(0xFF3E2D28),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
 
-            // Rewards Section
             if (!isRejected)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
+              _PixelPanel(
                 child: Row(
                   children: [
-                    const Icon(Icons.stars, color: Colors.orange),
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: resourceColor.withAlpha(32),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: resourceColor, width: 2),
+                      ),
+                      child: Icon(
+                        _resourceIcon(template.resource),
+                        color: resourceColor,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Your Reward:',
+                            'Reward',
                             style: GoogleFonts.quicksand(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange[800],
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: resourceColor,
                             ),
                           ),
                           Text(
                             '${template.resourceAmount} ${template.resource} points!',
                             style: GoogleFonts.quicksand(
                               fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF3E2D28),
                             ),
                           ),
                         ],
@@ -974,89 +1336,91 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ],
                 ),
               ),
-            const SizedBox(height: 32),
-            // Action Button
+            const SizedBox(height: 22),
             if (task.status == 'NOTD')
-              ElevatedButton(
-                onPressed: () {
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () {
                   Navigator.pop(context);
                   _confirmMarkAsDone(task);
                 },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF58A96B),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: titleColor, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0xFF5A3E36),
+                        offset: Offset(3, 3),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
-                  elevation: 2,
-                ),
-                child: Text(
-                  template.proofRequired
-                      ? 'Finish & Take Photo'
-                      : 'I Finished It!',
-                  style: GoogleFonts.quicksand(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        template.proofRequired
+                            ? Icons.camera_alt_rounded
+                            : Icons.check_circle_rounded,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          template.proofRequired
+                              ? 'Quest Done! Take Photo'
+                              : 'Quest Done!',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.quicksand(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               )
             else if (isPending)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withAlpha(30),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Task already finished! Waiting for approval.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.quicksand(
-                    color: Colors.green[800],
-                    fontWeight: FontWeight.bold,
-                  ),
+              _PixelPanel(
+                padding: const EdgeInsets.all(12),
+                child: _QuestMessage(
+                  icon: Icons.hourglass_top_rounded,
+                  message: 'Quest finished! Waiting for approval.',
+                  color: Colors.orange.shade800,
                 ),
               )
             else if (isCompleted)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withAlpha(30),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Task approved! Your reward has been added.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.quicksand(
-                    color: Colors.green[800],
-                    fontWeight: FontWeight.bold,
-                  ),
+              _PixelPanel(
+                padding: const EdgeInsets.all(12),
+                child: _QuestMessage(
+                  icon: Icons.check_circle_rounded,
+                  message: 'Quest approved! Your reward has been added.',
+                  color: Colors.green.shade800,
                 ),
               )
             else if (isRejected)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.withAlpha(30),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Task rejected. Check the feedback and try again next time.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.quicksand(
-                    color: Colors.red[800],
-                    fontWeight: FontWeight.bold,
-                  ),
+              _PixelPanel(
+                padding: const EdgeInsets.all(12),
+                child: _QuestMessage(
+                  icon: Icons.cancel_rounded,
+                  message: 'Quest rejected. Check the feedback and try again next time.',
+                  color: Colors.red.shade800,
                 ),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Close',
                 style: GoogleFonts.quicksand(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w900,
+                  color: titleColor,
                 ),
               ),
             ),
@@ -1068,25 +1432,329 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   }
 
   Widget _buildEmptyState() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-        const Center(
-          child: Column(
-            children: [
-              Icon(Icons.task_alt, size: 80, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'No tasks for you now.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: _PixelPanel(
+        child: Column(
+          children: [
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 54,
+              color: Colors.amber.shade700,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'No quests for this day.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.quicksand(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF5A3E36),
               ),
-              SizedBox(height: 8),
-              Text(
-                'Pull down to refresh',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Use the arrows to check another day.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.quicksand(color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PixelPanel extends StatelessWidget {
+  const _PixelPanel({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF5A3E36), width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xFF5A3E36),
+            offset: Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PixelIconButton extends StatelessWidget {
+  const _PixelIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onPressed,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0C2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF5A3E36), width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0xFF5A3E36),
+                offset: Offset(2, 2),
+                blurRadius: 0,
               ),
             ],
+          ),
+          child: Icon(icon, color: const Color(0xFF5A3E36)),
+        ),
+      ),
+    );
+  }
+}
+
+class _PixelProgressBar extends StatelessWidget {
+  const _PixelProgressBar({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 24,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF9ED),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF5A3E36), width: 2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: LinearProgressIndicator(
+          value: value.clamp(0, 1),
+          backgroundColor: const Color(0xFFE6D8C8),
+          valueColor: const AlwaysStoppedAnimation(Color(0xFF58A96B)),
+          minHeight: 18,
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestSectionTitle extends StatelessWidget {
+  const _QuestSectionTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 0, 8),
+      child: Text(
+        title,
+        style: GoogleFonts.pixelifySans(
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF5A3E36),
+        ),
+      ),
+    );
+  }
+}
+
+class _RewardChip extends StatelessWidget {
+  const _RewardChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MiniChip(icon: icon, label: label, color: color);
+  }
+}
+
+class _CountdownChip extends StatelessWidget {
+  const _CountdownChip({required this.dueDate});
+
+  final DateTime dueDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.timer_outlined, size: 13, color: Colors.purple.shade500),
+        const SizedBox(width: 3),
+        TimeRemainingWidget(
+          dueDate: dueDate,
+          style: GoogleFonts.quicksand(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Colors.purple.shade500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MiniChip(icon: icon, label: label, color: color);
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.of(context).size.width - 72;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: maxWidth.clamp(120.0, 420.0).toDouble(),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withAlpha(90)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.quicksand(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuestActionButton extends StatelessWidget {
+  const _QuestActionButton({
+    required this.isPending,
+    required this.proofRequired,
+    required this.onPressed,
+  });
+
+  final bool isPending;
+  final bool proofRequired;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isPending ? Colors.grey : const Color(0xFF58A96B);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onPressed,
+      child: Container(
+        width: 38,
+        height: 44,
+        decoration: BoxDecoration(
+          color: color.withAlpha(isPending ? 45 : 38),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color, width: 2),
+        ),
+        child: Icon(
+          isPending
+              ? Icons.hourglass_top
+              : proofRequired
+                  ? Icons.camera_alt
+                  : Icons.check_circle,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestMessage extends StatelessWidget {
+  const _QuestMessage({
+    required this.icon,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.quicksand(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],
