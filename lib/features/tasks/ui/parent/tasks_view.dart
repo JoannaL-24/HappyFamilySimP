@@ -15,6 +15,9 @@ import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+part '../../model/recurrence_helper_models.dart';
+part 'tasks_view_task_list_widgets.dart';
+
 class ParentTasksScreen extends StatefulWidget {
   final AuthRepository authRepository;
   const ParentTasksScreen({super.key, required this.authRepository});
@@ -71,6 +74,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     _loadCategories();
   }
 
+  // Data loading stays close to screen state because these lists drive filters,
+  // assignee chips, and the task cards shown below.
   Future<void> _loadCategories() async {
     try {
       final categories = await _taskRepository.fetchTaskCategories(_parentId);
@@ -132,6 +137,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     }
   }
 
+  // Page shell and top-level layout.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -236,6 +242,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     );
   }
 
+  // Calendar, category filters, and the visible task list.
   Widget _buildWeekStrip() {
     final colorScheme = Theme.of(context).colorScheme;
     final weekDays = List.generate(
@@ -497,6 +504,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     }
   }
 
+  // Category changes update the local screen state immediately, then rely on the
+  // repository for the DB write. Delete also clears the category on loaded tasks.
   Future<void> _showAddCategoryDialog() async {
     final category = await showTaskCategoryEditorDialog(context);
 
@@ -677,6 +686,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 
   // --- Edit Logistics: Bottom Sheet ---
+  // Bottom-sheet task form. The field state lives here so create and edit can
+  // share one form without adding a separate controller class.
   void _showTaskForm({TaskOccurrence? occurrence}) {
     final bool isEditing = occurrence != null;
 
@@ -1274,7 +1285,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     );
   }
 
-
+  // Save flow: create/update dispatch, validation, and recurring update policy.
   Future<bool> _submitTaskForm({
     required BuildContext context,
     required TaskOccurrence? occurrence,
@@ -1721,6 +1732,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     });
   }
 
+  // Form-to-domain helpers. These keep recurrence comparison readable in the
+  // update policy above.
   _RecurrenceFields _recurrenceFromForm({
     required String repeatOption,
     required Map<String, dynamic>? customRecurrence,
@@ -1899,6 +1912,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         .toString();
   }
 
+  // Dialog helpers used by the task form and destructive actions.
   Future<DateTime?> _showCustomDateTimePicker(
     BuildContext context,
     DateTime initialDate,
@@ -2223,354 +2237,3 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 }
 
-class _RecurrenceFields {
-  const _RecurrenceFields({
-    required this.pattern,
-    required this.interval,
-    this.dayOfWeek,
-    this.dayOfMonth,
-  });
-
-  final String pattern;
-  final int interval;
-  final List<int>? dayOfWeek;
-  final List<int>? dayOfMonth;
-}
-
-class _SeriesUpdatePlan {
-  const _SeriesUpdatePlan({required this.scope, this.updateScope});
-
-  factory _SeriesUpdatePlan.single() {
-    return const _SeriesUpdatePlan(scope: 'single');
-  }
-
-  factory _SeriesUpdatePlan.future(String updateScope) {
-    return _SeriesUpdatePlan(scope: 'future', updateScope: updateScope);
-  }
-
-  final String scope;
-  final String? updateScope;
-}
-
-class _EmptyWeekMessage extends StatelessWidget {
-  const _EmptyWeekMessage({
-    required this.hasTasks,
-    required this.hasCategoryFilter,
-    required this.selectedDate,
-  });
-
-  final bool hasTasks;
-  final bool hasCategoryFilter;
-  final DateTime selectedDate;
-
-  @override
-  Widget build(BuildContext context) {
-    final message = !hasTasks
-        ? 'No tasks found.'
-        : hasCategoryFilter
-            ? 'No tasks in this category on ${DateFormat('MMM d').format(selectedDate)}.'
-            : 'No tasks on ${DateFormat('MMM d').format(selectedDate)}.';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 34),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: GoogleFonts.quicksand(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.occurrence,
-    required this.categoryColor,
-    required this.isSelectionMode,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final TaskOccurrence occurrence;
-  final Color categoryColor;
-  final bool isSelectionMode;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final template = occurrence.template;
-    final isDone = occurrence.status == 'COMP';
-
-    if (template == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Opacity(
-      opacity: isDone ? 0.6 : 1,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 10),
-        color: _cardColor(colorScheme, isDone),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: _borderColor(colorScheme, isDone)),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                Container(
-                  width: 7,
-                  decoration: BoxDecoration(
-                    color: categoryColor,
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        if (isSelectionMode)
-                          _SelectionIcon(isSelected: isSelected),
-                        _ChildAvatarWithStatus(
-                          avatarUrl: occurrence.childAvatar,
-                          isDone: isDone,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _TaskCardDetails(
-                            occurrence: occurrence,
-                            isDone: isDone,
-                          ),
-                        ),
-                        _TaskCardTrailing(
-                          dueDate: occurrence.dueDate,
-                          isDone: isDone,
-                          showChevron: !isSelectionMode,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _cardColor(ColorScheme colorScheme, bool isDone) {
-    if (isSelected) {
-      return colorScheme.primaryContainer;
-    }
-
-    return isDone ? colorScheme.surfaceContainerHigh : colorScheme.surface;
-  }
-
-  Color _borderColor(ColorScheme colorScheme, bool isDone) {
-    if (isSelected) {
-      return colorScheme.primary.withAlpha(100);
-    }
-
-    return isDone ? Colors.transparent : colorScheme.primary.withAlpha(50);
-  }
-}
-
-class _SelectionIcon extends StatelessWidget {
-  const _SelectionIcon({required this.isSelected});
-
-  final bool isSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: isSelected ? colorScheme.primary : colorScheme.outline,
-        size: 20,
-      ),
-    );
-  }
-}
-
-class _ChildAvatarWithStatus extends StatelessWidget {
-  const _ChildAvatarWithStatus({required this.avatarUrl, required this.isDone});
-
-  final String avatarUrl;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: colorScheme.surfaceDim,
-          backgroundImage: avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
-          child: avatarUrl.isEmpty ? const Icon(Icons.person) : null,
-        ),
-        if (isDone)
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.check, size: 10, color: colorScheme.onPrimary),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _TaskCardDetails extends StatelessWidget {
-  const _TaskCardDetails({required this.occurrence, required this.isDone});
-
-  final TaskOccurrence occurrence;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final template = occurrence.template!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          template.title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            decoration: isDone ? TextDecoration.lineThrough : null,
-            color: isDone ? colorScheme.outline : colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Text(
-              occurrence.childName,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: colorScheme.secondary,
-                // fontWeight: FontWeight.w500,
-                // letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent.withAlpha(30),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  // TODO:change icon baeed on resource type in the future 
-                  const Icon(Icons.stars_rounded, size: 12, color: Colors.orangeAccent),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${template.resourceAmount}",
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TaskCardTrailing extends StatelessWidget {
-  const _TaskCardTrailing({
-    required this.dueDate,
-    required this.isDone,
-    required this.showChevron,
-  });
-
-  final DateTime dueDate;
-  final bool isDone;
-  final bool showChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        _DueChip(date: dueDate, isDone: isDone),
-        if (showChevron) ...[
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right, size: 20, color: colorScheme.outline),
-        ],
-      ],
-    );
-  }
-}
-
-class _DueChip extends StatelessWidget {
-  const _DueChip({required this.date, required this.isDone});
-
-  final DateTime date;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final isOverdue = date.isBefore(DateTime(now.year, now.month, now.day)) && !isDone;
-
-    // Semantic Colors: Red for overdue, Primary for upcoming, Outline for done
-    final Color color = isDone 
-        ? colorScheme.outline 
-        : (isOverdue ? colorScheme.error : colorScheme.primary);
-
-    String label = DateFormat('h:mm a').format(date);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(8),
-        border: isOverdue ? Border.all(color: color.withAlpha(50)) : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}

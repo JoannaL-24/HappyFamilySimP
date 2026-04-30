@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 
+// Dialog helpers for creating, editing, and deleting task categories.
 enum TaskCategoryAction {
   edit,
   delete,

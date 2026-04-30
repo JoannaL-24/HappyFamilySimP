@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 
+// Horizontal category selector used by the parent task screen.
 class TaskCategoryBar extends StatelessWidget {
   const TaskCategoryBar({
     super.key,
