@@ -23,18 +23,13 @@ class ParentTasksScreen extends StatefulWidget {
 class _ParentTasksScreenState extends State<ParentTasksScreen> {
   final TaskRepository _taskRepository = TaskRepository();
 
-  // future as state to enable
-  // late Future<List<TaskOccurrence>> _tasksFuture;
   List<TaskOccurrence> _tasks = [];
   bool _isLoadingTasks = true;
 
   List<Map<String, dynamic>> _availableChildren = [];
-  bool _isLoadingChildren = true;
 
   bool _isSelectionMode = false;
   Set<int> _selectedTaskIds = {};
-
-  bool _hasError = false;
 
   @override
   void initState() {
@@ -47,7 +42,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     setState(() => _isLoadingTasks = true);
     try {
       final userId = widget.authRepository.currentUser?.id;
-      // 2. Fetch data and store it directly in our new list
       final data = await _taskRepository.fetchChildTasks(userId ?? '');
       setState(() {
         _tasks = data;
@@ -57,67 +51,18 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       setState(() => _isLoadingTasks = false);
     }
   }
-  // late List<TaskOccurrence> _tasks;
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _tasks = [
-  //     TaskOccurrence(
-  //       id: 1,
-  //       templateId: 101,
-  //       dueDate: DateTime.now().add(const Duration(days: 1)),
-  //       status: 'NOTD',
-  //       template: TaskTemplate(
-  //         id: 101,
-  //         title: "Clean Bedroom",
-  //         description: "Pick up toys, vacuum the rug, and make the bed.",
-  //         proofRequired: true,
-  //         startDate: DateTime.now(),
-  //         endDate: DateTime.now().add(const Duration(days: 7)),
-  //       ),
-  //     ),
-  //     TaskOccurrence(
-  //       id: 2,
-  //       templateId: 102,
-  //       dueDate: DateTime.now().subtract(const Duration(hours: 2)),
-  //       status: 'COMP',
-  //       template: TaskTemplate(
-  //         id: 102,
-  //         title: "Brush Teeth",
-  //         description: "Brush for 2 minutes and use mouthwash.",
-  //         proofRequired: false,
-  //         startDate: DateTime.now(),
-  //         endDate: DateTime.now().add(const Duration(days: 30)),
-  //       ),
-  //     ),
-  //   ];
-  // }
 
   Future<void> _loadChildren() async {
     final supabase = Supabase.instance.client;
     final manageService = ManageService(supabase);
     final manageRepository = ManageRepository(manageService);
-    setState(() {
-      _isLoadingChildren = true;
-      _hasError = false; // Reset error state on retry
-    });
 
     try {
       final userId = widget.authRepository.currentUser?.id;
       final data = await manageRepository.fetchChildrenData(userId ?? '');
-      setState(() {
-        _availableChildren = data;
-        _isLoadingChildren = false;
-      });
+      setState(() => _availableChildren = data);
     } catch (e) {
-      setState(() {
-        _isLoadingChildren = false;
-        _hasError = true;
-      });
-
-      // Show an actionable error message
       if (mounted) {
-        // Ensure the widget is still in the tree
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Could not load children list'),
@@ -136,299 +81,117 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF6E8),
-      appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: const Color(0xffebdfcc),
-        title: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _isSelectionMode ? "${_selectedTaskIds.length} Selected" : "Tasks",
-            style: GoogleFonts.quicksand(
-                // fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF5A3E36), //soft dark brown
-              ),
+      appBar: _buildAppBar(colorScheme),
+      body: _buildBody(),
+      floatingActionButton: _buildNewTaskButton(colorScheme),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(ColorScheme colorScheme) {
+    return AppBar(
+      centerTitle: true,
+      backgroundColor: const Color(0xffebdfcc),
+      title: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          _isSelectionMode ? "${_selectedTaskIds.length} Selected" : "Tasks",
+          style: GoogleFonts.quicksand(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF5A3E36),
           ),
         ),
-        actions: [
-          if (!_isSelectionMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: IconButton(
-                icon: const Icon(Icons.checklist),
-                onPressed: () => setState(() => _isSelectionMode = true),
-              ),
-            ),
+      ),
+      actions: _buildAppBarActions(colorScheme),
+      foregroundColor: colorScheme.onPrimaryContainer,
+      elevation: 1,
+    );
+  }
 
-          if (_isSelectionMode) ...[
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.delete, color: colorScheme.error),
-                    onPressed: _handleBulkDelete,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setState(() {
-                        _isSelectionMode = false;
-                        _selectedTaskIds.clear();
-                      });
-                    },
-                  ),
-                ],
-              ),
+  List<Widget> _buildAppBarActions(ColorScheme colorScheme) {
+    if (!_isSelectionMode) {
+      return [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: IconButton(
+            icon: const Icon(Icons.checklist),
+            onPressed: () => setState(() => _isSelectionMode = true),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.delete, color: colorScheme.error),
+              onPressed: _handleBulkDelete,
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _clearSelection,
             ),
           ],
-        ],
-        foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 1,
+        ),
       ),
-      body: _isLoadingTasks
-          ? const Center(child: CircularProgressIndicator())
-          : _tasks.isEmpty
-          ? const Center(child: Text("No tasks found."))
-          : RefreshIndicator(
-              onRefresh: _refreshTasks,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                itemCount: _tasks.length,
-                itemBuilder: (context, index) {
-                  final occurrence = _tasks[index];
-                  // Safely access the template
-                  final template = occurrence.template;
-                  final isDone = occurrence.status == 'COMP';
-                  final isSelected = _selectedTaskIds.contains(occurrence.id);
-
-                  return Opacity(
-                    opacity: isDone ? 0.6 : 1.0,
-                    child: Card(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      color: isSelected
-                          ? colorScheme
-                                .primaryContainer // Highlight selected
-                          : (isDone
-                                ? colorScheme.surfaceContainerHigh
-                                : colorScheme.surface),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        // side: BorderSide(color: isDone ? colorScheme.outlineVariant.withAlpha(125): colorScheme.outlineVariant, width: 0.7),
-                        side: BorderSide(
-                          color: isSelected
-                              ? colorScheme.primary.withAlpha(100)
-                              : (isDone
-                                    ? Colors.transparent
-                                    : colorScheme.primary.withAlpha(50)),
-
-                          width: 1,
-                        ),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          if (_isSelectionMode) {
-                            _toggleSelection(occurrence.id);
-                          } else {
-                            _showTaskForm(occurrence: occurrence);
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              // 0. Delection Checkbox (only in selection mode)
-                              if (_isSelectionMode)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: Icon(
-                                    isSelected
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_unchecked,
-                                    color: isSelected
-                                        ? colorScheme.primary
-                                        : colorScheme.outline,
-                                    size: 20,
-                                  ),
-                                ),
-                              // 1. Left aligned: indicator
-                              Stack(
-                                children: [
-                                  _buildChildIndicator(
-                                    occurrence
-                                        .childAvatar, // Using the URL we generated earlier
-                                    colorScheme,
-                                  ),
-                                  if (isDone)
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.primary,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.check,
-                                          size: 10,
-                                          color: colorScheme.onPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(width: 16),
-                              // 2. Left aligned: Task Details
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      template!.title,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            decoration: isDone
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            color: isDone
-                                                ? colorScheme.outline
-                                                : colorScheme.onSurface,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          occurrence.childName,
-                                          style: theme.textTheme.labelMedium
-                                              ?.copyWith(
-                                                color: colorScheme.secondary,
-                                                fontWeight: FontWeight.w500,
-                                                letterSpacing: 0.5,
-                                              ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Icon(
-                                          Icons
-                                              .stars_rounded, // Visual cue for "Reward"
-                                          size: 14,
-                                          color: Colors
-                                              .orangeAccent, // Or use colorScheme.tertiary
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "${template.resourceAmount} ${template.resource}",
-                                          style: theme.textTheme.labelSmall
-                                              ?.copyWith(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // 3. Right aligned: Due Date + Chevron
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  _buildDueChip(
-                                    occurrence.dueDate,
-                                    colorScheme,
-                                    isDone,
-                                  ),
-                                  if (!_isSelectionMode) ...[
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.chevron_right,
-                                      size: 20,
-                                      color: colorScheme.outline,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showTaskForm(),
-        label: const Text("New Task"),
-        icon: const Icon(Icons.add_task),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-      ),
-    );
+    ];
   }
 
-  // --- Helper UI Components ---
-  Widget _buildChildIndicator(String avatarUrl, ColorScheme colorScheme) {
-    return CircleAvatar(
-      radius: 24,
-      backgroundColor: colorScheme.surfaceDim,
-      backgroundImage: NetworkImage(avatarUrl),
-      // default icon
-      // final bool isDone = status == 'DONE';
-      // return Container(
-      //   width: 48,
-      //   height: 48,
-      //   decoration: BoxDecoration(
-      //     shape: BoxShape.circle,
-      //     color: colorScheme.surfaceDim,
-      //     // color: isDone ? colorScheme.surfaceDim : colorScheme.surfaceDim,
-      //     // border: Border.all(
-      //     //   color: isDone ? colorScheme.primary : colorScheme.outlineVariant,
-      //     //   width: 2,
-      //     // ),
-      //   ),
-      //   child: Icon(
-      //     Icons.person,
-      //     // isDone ? Icons.check : Icons.person,
-      //     color: colorScheme.primary,
-      //   ),
-    );
-  }
+  Widget _buildBody() {
+    if (_isLoadingTasks) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  Widget _buildDueChip(DateTime date, ColorScheme colors, bool isDone) {
-    final color = isDone ? colors.outline : colors.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(
-          0x1A,
-        ), // 0.1 opacity in alpha channel (0x1A = 26 out of 255)
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        DateFormat('MMM d').format(date), // Use intl package
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+    if (_tasks.isEmpty) {
+      return const Center(child: Text("No tasks found."));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshTasks,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        itemCount: _tasks.length,
+        itemBuilder: (context, index) => _TaskCard(
+          occurrence: _tasks[index],
+          isSelectionMode: _isSelectionMode,
+          isSelected: _selectedTaskIds.contains(_tasks[index].id),
+          onTap: () => _handleTaskTap(_tasks[index]),
         ),
       ),
     );
   }
 
-  // --- Edit Logistics: Bottom Sheet ---
+  Widget _buildNewTaskButton(ColorScheme colorScheme) {
+    return FloatingActionButton.extended(
+      onPressed: () => _showTaskForm(),
+      label: const Text("New Task"),
+      icon: const Icon(Icons.add_task),
+      backgroundColor: colorScheme.primaryContainer,
+      foregroundColor: colorScheme.onPrimaryContainer,
+    );
+  }
+
+  void _handleTaskTap(TaskOccurrence occurrence) {
+    if (_isSelectionMode) {
+      _toggleSelection(occurrence.id);
+      return;
+    }
+
+    _showTaskForm(occurrence: occurrence);
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedTaskIds.clear();
+    });
+  }
+
   void _showTaskForm({TaskOccurrence? occurrence}) {
     final bool isEditing = occurrence != null;
 
-    // 1. Initialize Controllers and State
     final titleController = TextEditingController(
       text: isEditing ? occurrence.template?.title : "",
     );
@@ -444,9 +207,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         : false;
     String? selectedChildId = isEditing ? occurrence.childId : null;
 
-    String? selectedResource = isEditing
-        ? occurrence.template?.resource
-        : 'Food';
+    String? selectedResource = isEditing ? occurrence.template?.resource : 'food';
     int resourceAmount = isEditing
         ? (occurrence.template?.resourceAmount ?? 1)
         : 1;
@@ -456,39 +217,30 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           : '1',
     );
 
-    String _repeatOption = "Never";
-    DateTime? _endDate = isEditing ? occurrence.template?.endDate : null;
-    Map<String, dynamic>? _customRecurrence;
-    bool _isSaving = false;
+    String repeatOption = "Never";
+    DateTime? endDate = isEditing ? occurrence.template?.endDate : null;
+    Map<String, dynamic>? customRecurrence;
+    bool isSaving = false;
 
-    // 2. Pre-populate Recurrence Info (UI Dropdown mapping)
     if (isEditing && occurrence.template?.recurrence != null) {
       final rec = occurrence.template!.recurrence!;
-      final pattern = rec.pattern.toLowerCase();
+      final pattern = _normalizeRecurrencePattern(rec.pattern);
+      final hasCustomRule =
+          rec.interval != 1 ||
+          (rec.dayOfWeek != null && rec.dayOfWeek!.isNotEmpty) ||
+          (rec.dayOfMonth != null && rec.dayOfMonth!.isNotEmpty);
 
-      if (rec.interval == 1 &&
-          rec.dayOfWeek == null &&
-          rec.dayOfMonth == null) {
-        if (pattern == 'daily')
-          _repeatOption = 'Daily';
-        else if (pattern == 'weekly')
-          _repeatOption = 'Weekly';
-        else if (pattern == 'monthly')
-          _repeatOption = 'Monthly';
-        else
-          _repeatOption = 'Custom';
-      } else {
-        _repeatOption = 'Custom';
-      }
-
-      if (_repeatOption == 'Custom') {
-        _customRecurrence = {
+      if (hasCustomRule) {
+        repeatOption = 'Custom';
+        customRecurrence = {
           'pattern': pattern,
           'interval': rec.interval,
-          'selectedDays': pattern == 'weekly'
+          'selectedDays': pattern == 'Weekly'
               ? (rec.dayOfWeek ?? [])
-              : (pattern == 'monthly' ? (rec.dayOfMonth ?? []) : []),
+              : (pattern == 'Monthly' ? (rec.dayOfMonth ?? []) : []),
         };
+      } else {
+        repeatOption = pattern;
       }
     }
 
@@ -497,10 +249,10 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      // --- FIX: Prevent accidental exit via swipe or tapping outside ---
+      // TODO: consider allowing drag to dismiss when not editing existing task
       enableDrag: false,
       isDismissible: false,
-      // -----------------------------------------------------------------
+      
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => DraggableScrollableSheet(
@@ -537,7 +289,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         style: theme.textTheme.headlineSmall,
                       ),
                       IconButton(
-                        onPressed: _isSaving
+                        onPressed: isSaving
                             ? null
                             : () => Navigator.pop(context),
                         icon: const Icon(Icons.close),
@@ -549,12 +301,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                   child: SingleChildScrollView(
                     controller: scrollController,
                     physics: const ClampingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      8,
-                      24,
-                      MediaQuery.of(context).viewInsets.bottom + 32,
-                    ),
+                    padding: EdgeInsets.fromLTRB(24, 8,24, MediaQuery.of(context).viewInsets.bottom + 32,),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -733,7 +480,9 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                               icon: Icon(Icons.cleaning_services),
                             ),
                           ],
-                          selected: {selectedResource},
+                          selected: selectedResource == null
+                              ? <String?>{}
+                              : {selectedResource},
                           emptySelectionAllowed: true,
                           onSelectionChanged: (val) => setSheetState(() {
                             selectedResource = val.isEmpty ? null : val.first;
@@ -765,7 +514,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         Text("Repeated", style: theme.textTheme.labelLarge),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          initialValue: _repeatOption,
+                          initialValue: repeatOption,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.repeat),
                             border: OutlineInputBorder(
@@ -792,30 +541,30 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                               );
                               if (result != null) {
                                 setSheetState(() {
-                                  _customRecurrence = result;
-                                  _repeatOption = 'Custom';
+                                  customRecurrence = result;
+                                  repeatOption = 'Custom';
                                 });
                               } else {
-                                setSheetState(() => _repeatOption = 'Never');
+                                setSheetState(() => repeatOption = 'Never');
                               }
                             } else {
                               setSheetState(() {
-                                _repeatOption = val!;
-                                _customRecurrence = null;
+                                repeatOption = val!;
+                                customRecurrence = null;
                               });
                             }
                           },
                         ),
 
-                        if (_repeatOption != 'Never') ...[
+                        if (repeatOption != 'Never') ...[
                           Padding(
                             padding: const EdgeInsets.only(top: 8, left: 4),
                             child: Text(
-                              _repeatOption == 'Custom'
+                              repeatOption == 'Custom'
                                   ? TaskUtils.getCustomSummary(
-                                      _customRecurrence,
+                                      customRecurrence,
                                     )
-                                  : "Repeats $_repeatOption",
+                                  : "Repeats $repeatOption",
                               style: TextStyle(
                                 color: theme.colorScheme.primary,
                               ),
@@ -827,19 +576,19 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             leading: const Icon(Icons.calendar_today),
                             title: const Text("End Repeat On"),
                             subtitle: Text(
-                              _endDate != null
-                                  ? DateFormat('MMM dd, yyyy').format(_endDate!)
+                              endDate != null
+                                  ? DateFormat('MMM dd, yyyy').format(endDate!)
                                   : "Not set",
                             ),
                             trailing: IconButton.filledTonal(
                               onPressed: () async {
                                 final picked = await _showCustomDateTimePicker(
                                   context,
-                                  _endDate ?? DateTime.now(),
+                                  endDate ?? DateTime.now(),
                                   false,
                                 );
                                 if (picked != null)
-                                  setSheetState(() => _endDate = picked);
+                                  setSheetState(() => endDate = picked);
                               },
                               icon: const Icon(Icons.edit_calendar),
                             ),
@@ -851,388 +600,35 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _isSaving
+                            onPressed: isSaving
                                 ? null
                                 : () async {
-                                    if (titleController.text.trim().isEmpty)
-                                      return;
-                                    if (selectedChildId == null) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Please select an assignee",
-                                          ),
+                                    try {
+                                      final didSave = await _submitTaskForm(
+                                        context: context,
+                                        occurrence: occurrence,
+                                        title: titleController.text,
+                                        description: descController.text,
+                                        selectedDate: selectedDate,
+                                        currentStatus: currentStatus,
+                                        proofRequired: proofRequired,
+                                        selectedChildId: selectedChildId,
+                                        selectedResource: selectedResource,
+                                        resourceAmount: resourceAmount,
+                                        repeatOption: repeatOption,
+                                        customRecurrence: customRecurrence,
+                                        endDate: endDate,
+                                        onSavingStarted: () => setSheetState(
+                                          () => isSaving = true,
                                         ),
                                       );
-                                      return;
-                                    }
 
-                                    final TaskRepository repository =
-                                        TaskRepository();
-                                    try {
-                                      if (isEditing) {
-                                        if (isEditing) {
-                                          // --- 1. DETECTION LOGIC ---
-                                          bool dateChanged =
-                                              occurrence.dueDate.year !=
-                                                  selectedDate.year ||
-                                              occurrence.dueDate.month !=
-                                                  selectedDate.month ||
-                                              occurrence.dueDate.day !=
-                                                  selectedDate.day;
-
-                                          bool timeChanged =
-                                              occurrence.dueDate.hour !=
-                                                  selectedDate.hour ||
-                                              occurrence.dueDate.minute !=
-                                                  selectedDate.minute;
-
-                                          String newPattern =
-                                              _repeatOption == 'Custom'
-                                              ? _customRecurrence!['pattern']
-                                              : _repeatOption.toLowerCase();
-
-                                          String oldPattern =
-                                              occurrence
-                                                  .template
-                                                  ?.recurrence
-                                                  ?.pattern
-                                                  .toLowerCase() ??
-                                              'never';
-                                          bool patternChanged =
-                                              newPattern != oldPattern;
-                                          if (!patternChanged &&
-                                              occurrence
-                                                      .template
-                                                      ?.recurrence
-                                                      ?.interval !=
-                                                  null) {
-                                            int oldInterval = occurrence
-                                                .template!
-                                                .recurrence!
-                                                .interval;
-                                            int newInterval =
-                                                _repeatOption == 'Custom'
-                                                ? _customRecurrence!['interval']
-                                                : 1;
-                                            patternChanged =
-                                                oldInterval != newInterval;
-                                            if (!patternChanged && newPattern == 'weekly') {
-                                              List<int> oldDays =
-                                                  occurrence
-                                                      .template!
-                                                      .recurrence!
-                                                      .dayOfWeek ??
-                                                  [];
-                                              List<int> newDays =
-                                                  List<int>.from(
-                                                    _customRecurrence![
-                                                        'selectedDays'],
-                                                  );
-                                              oldDays.sort();
-                                              newDays.sort();
-                                              patternChanged =
-                                                  !listEquals(oldDays, newDays);
-                                            } else if (!patternChanged &&
-                                                newPattern == 'monthly') {
-                                              List<int> oldDays =
-                                                  occurrence
-                                                      .template!
-                                                      .recurrence!
-                                                      .dayOfMonth ??
-                                                  [];
-                                              List<int> newDays =
-                                                  List<int>.from(
-                                                    _customRecurrence![
-                                                        'selectedDays'],
-                                                  );
-                                              oldDays.sort();
-                                              newDays.sort();
-                                              patternChanged =
-                                                  !listEquals(oldDays, newDays);
-                                            }
-                                          }
-
-                                          _endDate = _endDate?.copyWith(
-                                            hour: 23,
-                                            minute: 59,
-                                            second: 00,
-                                          );
-                                          bool endDateChanged =
-                                              occurrence.template?.endDate !=
-                                              _endDate;
-
-                                          bool needsForcedSeriesUpdate =
-                                              dateChanged ||
-                                              patternChanged ||
-                                              endDateChanged;
-                                          bool isCurrentlyRecurring =
-                                              occurrence
-                                                  .template
-                                                  ?.recurrenceId !=
-                                              null;
-                                          bool isNowRecurring =
-                                              _repeatOption != "Never";
-
-                                          bool basicInfoChanged =
-                                              titleController.text !=
-                                                  occurrence.template?.title ||
-                                              descController.text !=
-                                                  occurrence
-                                                      .template
-                                                      ?.description ||
-                                              proofRequired !=
-                                                  occurrence
-                                                      .template
-                                                      ?.proofRequired ||
-                                              selectedChildId !=
-                                                  occurrence.childId||
-                                              selectedResource !=
-                                                  occurrence
-                                                      .template!.resource||
-                                              resourceAmount !=
-                                                  (occurrence
-                                                          .template
-                                                          !.resourceAmount ?? 1);
-
-                                          String? scope;
-                                          String? updateScope;
-
-                                          // --- 2. DIALOG LOGIC ---
-                                          if (isCurrentlyRecurring ||
-                                              isNowRecurring) {
-                                            if (needsForcedSeriesUpdate) {
-                                              // Prompt 1: Structural change (Warns about resetting future tasks)
-                                              final proceed =
-                                                  await _showForcedUpdateDialog(
-                                                    context,
-                                                  );
-                                              if (!proceed) return;
-                                              scope = 'future';
-                                              updateScope =
-                                                  'rewrite'; // Nuke and Pave
-                                              if (endDateChanged)
-                                                updateScope =
-                                                    'alter'; // Just update end date, keep pattern
-                                            } else if (timeChanged) {
-                                              // Prompt 2: Time change (Ask "This task" vs "All future")
-                                              scope =
-                                                  await _showEditScopeDialog(
-                                                    context,
-                                                  );
-                                              if (scope == null ||
-                                                  scope == 'cancel')
-                                                return;
-                                              if (scope == 'future')
-                                                updateScope =
-                                                    'alter'; // Just update template time
-                                            } else if (basicInfoChanged) {
-                                              // Prompt 3: Just text/assignee changes (Quietly apply to series)
-                                              final proceed =
-                                                  await _showForcedUpdateDialog(
-                                                    context,
-                                                  );
-                                              if (!proceed) return;
-                                              scope = 'future';
-                                              updateScope = 'alter';
-                                            } else {
-                                              // Only status changed
-                                              scope = 'single';
-                                            }
-                                          }
-
-                                          setSheetState(() => _isSaving = true);
-
-                                          // --- 3. EXECUTION LOGIC ---
-                                          if (scope == 'future') {
-                                            int interval =
-                                                _repeatOption == 'Custom'
-                                                ? _customRecurrence!['interval']
-                                                : 1;
-                                            List<int>? dayOfWeek;
-                                            List<int>? dayOfMonth;
-
-                                            if (_repeatOption == 'Custom') {
-                                              if (newPattern == 'weekly')
-                                                dayOfWeek = List<int>.from(
-                                                  _customRecurrence!['selectedDays'],
-                                                );
-                                              if (newPattern == 'monthly')
-                                                dayOfMonth = List<int>.from(
-                                                  _customRecurrence!['selectedDays'],
-                                                );
-                                            } else if (_repeatOption !=
-                                                'Never') {
-                                              if (newPattern == 'weekly')
-                                                dayOfWeek = [
-                                                  selectedDate.weekday,
-                                                ];
-                                              if (newPattern == 'monthly')
-                                                dayOfMonth = [selectedDate.day];
-                                            }
-
-                                            await repository.updateRecurringSeries(
-                                              templateId: occurrence.templateId,
-                                              recurrenceId: occurrence
-                                                  .template!
-                                                  .recurrenceId,
-                                              title: titleController.text,
-                                              description: descController.text,
-                                              proofRequired: proofRequired,
-                                              resource:
-                                                  selectedResource ?? 'food',
-                                              resourceAmount: resourceAmount,
-                                              childId: selectedChildId!,
-                                              startDate:
-                                                  selectedDate, // New anchor date
-                                              pattern: newPattern,
-                                              interval: interval,
-                                              dayOfWeek: dayOfWeek,
-                                              dayOfMonth: dayOfMonth,
-                                              endDate: _endDate,
-                                              updateScope:
-                                                  updateScope ?? 'alter',
-                                              oldDueDate: occurrence.dueDate,
-                                            );
-                                            await _refreshTasks();
-                                          } else {
-                                            // --- SINGLE TASK UPDATE ---
-                                            await Future.wait([
-                                              repository.updateTemplate(
-                                                templateId:
-                                                    occurrence.templateId,
-                                                title: titleController.text,
-                                                description:
-                                                    descController.text,
-                                                proofRequired: proofRequired,
-                                                resource:
-                                                    selectedResource ?? 'food',
-                                                resourceAmount: resourceAmount,
-                                              ),
-                                              repository.updateOccurrence(
-                                                occurrenceId: occurrence.id,
-                                                dueDate: selectedDate,
-                                                status: currentStatus,
-                                                childId: selectedChildId!,
-                                              ),
-                                            ]);
-
-                                            int index = _tasks.indexWhere(
-                                              (t) => t.id == occurrence.id,
-                                            );
-                                            if (index != -1) {
-                                              setState(() {
-                                                _tasks[index] = _tasks[index]
-                                                    .copyWith(
-                                                      dueDate: selectedDate,
-                                                      status: currentStatus,
-                                                      childId: selectedChildId,
-                                                      childName: _availableChildren
-                                                          .firstWhere(
-                                                            (c) =>
-                                                                c['id'] ==
-                                                                selectedChildId,
-                                                            orElse: () => {
-                                                              'name': 'Unknown',
-                                                            },
-                                                          )['name'],
-                                                      template: _tasks[index]
-                                                          .template!
-                                                          .copyWith(
-                                                            title:
-                                                                titleController
-                                                                    .text,
-                                                            description:
-                                                                descController
-                                                                    .text,
-                                                            proofRequired:
-                                                                proofRequired,
-                                                            resource:
-                                                                selectedResource ?? 'food',
-                                                            resourceAmount:
-                                                                resourceAmount,
-                                                          ),
-                                                    );
-                                              });
-                                            }
-                                          }
-                                        }
-                                      } else {
-                                        // New Task Logic
-                                        setSheetState(() => _isSaving = true);
-                                        if (_repeatOption == "Never") {
-                                          final newTemplate = await repository
-                                              .createTemplate(
-                                                title: titleController.text,
-                                                description:
-                                                    descController.text,
-                                                proofRequired: proofRequired,
-                                                resource: selectedResource ?? 'food',
-                                                resourceAmount: resourceAmount,
-                                              );
-                                          final newTask = await repository
-                                              .createOccurrence(
-                                                childId: selectedChildId!,
-                                                dueDate: selectedDate,
-                                                status: 'NOTD',
-                                                templateId: newTemplate.id,
-                                              );
-                                          setState(
-                                            () => _tasks.insert(0, newTask),
-                                          );
-                                        } else {
-                                          String pattern =
-                                              _repeatOption == 'Custom'
-                                              ? _customRecurrence!['pattern']
-                                              : _repeatOption.toLowerCase();
-                                          int interval =
-                                              _repeatOption == 'Custom'
-                                              ? _customRecurrence!['interval']
-                                              : 1;
-                                          List<int>? dayOfWeek;
-                                          List<int>? dayOfMonth;
-                                          if (_repeatOption == 'Custom') {
-                                            if (pattern == 'weekly')
-                                              dayOfWeek = List<int>.from(
-                                                _customRecurrence!['selectedDays'],
-                                              );
-                                            if (pattern == 'monthly')
-                                              dayOfMonth = List<int>.from(
-                                                _customRecurrence!['selectedDays'],
-                                              );
-                                          } else {
-                                            if (pattern == 'weekly')
-                                              dayOfWeek = [
-                                                selectedDate.weekday,
-                                              ];
-                                            if (pattern == 'monthly')
-                                              dayOfMonth = [selectedDate.day];
-                                          }
-                                          await repository.saveRecurringTask(
-                                            title: titleController.text,
-                                            description: descController.text,
-                                            proofRequired: proofRequired,
-                                            resource:
-                                                selectedResource ?? 'food',
-                                            resourceAmount: resourceAmount,
-                                            childId: selectedChildId!,
-                                            dueDate: selectedDate,
-                                            endDate: _endDate,
-                                            pattern: pattern,
-                                            interval: interval,
-                                            dayOfWeek: dayOfWeek,
-                                            dayOfMonth: dayOfMonth,
-                                          );
-                                          await _refreshTasks();
-                                        }
-                                      }
-                                      if (context.mounted)
+                                      if (didSave && context.mounted) {
                                         Navigator.pop(context);
+                                      }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        setSheetState(() => _isSaving = false);
+                                        setSheetState(() => isSaving = false);
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -1245,7 +641,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                                       }
                                     }
                                   },
-                            child: _isSaving
+                            child: isSaving
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
@@ -1270,25 +666,591 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     );
   }
 
-  String _getRecurrenceSummary(String option, Map<String, dynamic>? custom) {
-    if (option != "Custom") return "Repeats $option";
-
-    final pattern = custom?['pattern'] ?? 'daily';
-    final interval = custom?['interval'] ?? 1;
-    final days = custom?['selectedDays'] as List<int>?;
-
-    String unit = pattern == 'daily'
-        ? 'day'
-        : pattern == 'weekly'
-        ? 'week'
-        : 'month';
-    String plural = interval > 1 ? 's' : '';
-
-    String summary = "Every $interval $unit$plural";
-    if (days != null && days.isNotEmpty) {
-      summary += " on ${days.join(', ')}";
+  Future<bool> _submitTaskForm({
+    required BuildContext context,
+    required TaskOccurrence? occurrence,
+    required String title,
+    required String description,
+    required DateTime selectedDate,
+    required String currentStatus,
+    required bool proofRequired,
+    required String? selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+    required String repeatOption,
+    required Map<String, dynamic>? customRecurrence,
+    required DateTime? endDate,
+    required VoidCallback onSavingStarted,
+  }) async {
+    if (!_validateTaskForm(context, title, selectedChildId)) {
+      return false;
     }
-    return summary;
+
+    final recurrence = _recurrenceFromForm(
+      repeatOption: repeatOption,
+      customRecurrence: customRecurrence,
+      selectedDate: selectedDate,
+    );
+
+    // Check if we are creating a new task or updating an existing one
+    if (occurrence == null) {
+      onSavingStarted();
+      await _createTaskFromForm(
+        title: title,
+        description: description,
+        selectedDate: selectedDate,
+        proofRequired: proofRequired,
+        selectedChildId: selectedChildId!,
+        selectedResource: selectedResource,
+        resourceAmount: resourceAmount,
+        recurrence: recurrence,
+        endDate: endDate,
+      );
+      return true;
+    }
+
+    return _updateTaskFromForm(
+      context: context,
+      occurrence: occurrence,
+      title: title,
+      description: description,
+      selectedDate: selectedDate,
+      currentStatus: currentStatus,
+      proofRequired: proofRequired,
+      selectedChildId: selectedChildId!,
+      selectedResource: selectedResource,
+      resourceAmount: resourceAmount,
+      recurrence: recurrence,
+      endDate: endDate,
+      onSavingStarted: onSavingStarted,
+    );
+  }
+
+  bool _validateTaskForm(
+    BuildContext context,
+    String title,
+    String? selectedChildId,
+  ) {
+    if (title.trim().isEmpty) {
+      return false;
+    }
+
+    if (selectedChildId != null) {
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select an assignee")),
+    );
+    return false;
+  }
+
+  Future<void> _createTaskFromForm({
+    required String title,
+    required String description,
+    required DateTime selectedDate,
+    required bool proofRequired,
+    required String selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+    required _RecurrenceFields recurrence,
+    required DateTime? endDate,
+  }) async {
+    final resource = selectedResource ?? 'food';
+
+    if (recurrence.pattern == 'Never') {
+      final newTemplate = await _taskRepository.createTemplate(
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+      );
+      final newTask = await _taskRepository.createOccurrence(
+        childId: selectedChildId,
+        dueDate: selectedDate,
+        status: 'NOTD',
+        templateId: newTemplate.id,
+      );
+
+      setState(() => _tasks.insert(0, newTask));
+      return;
+    }
+
+    await _taskRepository.saveRecurringTask(
+      title: title,
+      description: description,
+      proofRequired: proofRequired,
+      resource: resource,
+      resourceAmount: resourceAmount,
+      childId: selectedChildId,
+      dueDate: selectedDate,
+      endDate: endDate,
+      pattern: recurrence.pattern,
+      interval: recurrence.interval,
+      dayOfWeek: recurrence.dayOfWeek,
+      dayOfMonth: recurrence.dayOfMonth,
+    );
+    await _refreshTasks();
+  }
+
+  Future<bool> _updateTaskFromForm({
+    required BuildContext context,
+    required TaskOccurrence occurrence,
+    required String title,
+    required String description,
+    required DateTime selectedDate,
+    required String currentStatus,
+    required bool proofRequired,
+    required String selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+    required _RecurrenceFields recurrence,
+    required DateTime? endDate,
+    required VoidCallback onSavingStarted,
+  }) async {
+    final normalizedEndDate = _endOfDay(endDate);
+    final updatePlan = await _chooseUpdatePlan(
+      context: context,
+      occurrence: occurrence,
+      title: title,
+      description: description,
+      selectedDate: selectedDate,
+      proofRequired: proofRequired,
+      selectedChildId: selectedChildId,
+      selectedResource: selectedResource,
+      resourceAmount: resourceAmount,
+      recurrence: recurrence,
+      endDate: normalizedEndDate,
+    );
+
+    if (updatePlan == null) {
+      return false;
+    }
+
+    onSavingStarted();
+
+    if (updatePlan.scope == 'future') {
+        await _taskRepository.updateRecurringSeries(
+        templateId: occurrence.templateId,
+        recurrenceId: occurrence.template!.recurrenceId,
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: selectedResource ?? 'food',
+        resourceAmount: resourceAmount,
+        childId: selectedChildId,
+        startDate: selectedDate,
+        pattern: recurrence.pattern,
+        interval: recurrence.interval,
+        dayOfWeek: recurrence.dayOfWeek,
+        dayOfMonth: recurrence.dayOfMonth,
+        endDate: normalizedEndDate,
+        updateScope: updatePlan.updateScope ?? 'modify',
+        updateChildAssignments: selectedChildId != occurrence.childId,
+        syncGeneratedOccurrences:
+            updatePlan.updateScope == 'bounds' &&
+            !_isSameOptionalDate(occurrence.template?.endDate, normalizedEndDate),
+        oldDueDate: occurrence.dueDate,
+      );
+      await _refreshTasks();
+      return true;
+    }
+
+    await _updateSingleTaskFromForm(
+      occurrence: occurrence,
+      title: title,
+      description: description,
+      selectedDate: selectedDate,
+      currentStatus: currentStatus,
+      proofRequired: proofRequired,
+      selectedChildId: selectedChildId,
+      selectedResource: selectedResource,
+      resourceAmount: resourceAmount,
+    );
+    return true;
+  }
+
+  Future<_SeriesUpdatePlan?> _chooseUpdatePlan({
+    required BuildContext context,
+    required TaskOccurrence occurrence,
+    required String title,
+    required String description,
+    required DateTime selectedDate,
+    required bool proofRequired,
+    required String selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+    required _RecurrenceFields recurrence,
+    required DateTime? endDate,
+  }) async {
+    final dateChanged = !_isSameDate(occurrence.dueDate, selectedDate);
+    final timeChanged = !_isSameTime(occurrence.dueDate, selectedDate);
+    final recurrenceChanged = _recurrenceChanged(occurrence, recurrence);
+    final patternTypeChanged = _recurrencePatternChanged(
+      occurrence,
+      recurrence,
+    );
+    final endDateChanged = !_isSameOptionalDate(
+      occurrence.template?.endDate,
+      endDate,
+    );
+    final isCurrentlyRecurring = occurrence.template?.recurrenceId != null;
+    final wantToRecurring = recurrence.pattern != 'Never';
+    final basicInfoChanged = _basicTaskInfoChanged(
+      occurrence: occurrence,
+      title: title,
+      description: description,
+      proofRequired: proofRequired,
+      selectedChildId: selectedChildId,
+      selectedResource: selectedResource,
+      resourceAmount: resourceAmount,
+    );
+
+    if (!isCurrentlyRecurring && !wantToRecurring) {
+      return _SeriesUpdatePlan.single();
+    }
+    if (isCurrentlyRecurring && !wantToRecurring) {
+      final proceed = await _showSeriesActionDialog(
+        context: context,
+        title: 'End Recurrence',
+        message:
+            'This will end the old recurrence before this task and keep this task as a single task with the new changes.',
+        confirmLabel: 'End Recurrence',
+      );
+      if (!proceed) {
+        return null;
+      }
+
+      return _SeriesUpdatePlan.future(
+        'rewrite',
+      );
+    }
+    if (patternTypeChanged || (recurrenceChanged && !dateChanged)) {
+      final proceed = await _showSeriesActionDialog(
+        context: context,
+        title: 'Create New Recurrence',
+        message:
+            'Changing the repeat rule will end the old recurrence before this task and create a new recurrence from this task forward.',
+        confirmLabel: 'Create Recurrence',
+      );
+      if (!proceed) {
+        return null;
+      }
+
+      return _SeriesUpdatePlan.future(
+        'rewrite',
+      );
+    }
+
+    if (dateChanged) {
+      final proceed = await _showSeriesActionDialog(
+        context: context,
+        title: 'Rewrite Series',
+        message:
+            'Changing the due date will rewrite this recurrence so every pending task follows the new schedule. Tasks after the end date will be removed.',
+        confirmLabel: 'Rewrite Series',
+      );
+      if (!proceed) {
+        return null;
+      }
+
+      return _SeriesUpdatePlan.future(
+        'rewriteAll',
+      );
+    }
+
+    if (endDateChanged || basicInfoChanged) {
+      final proceed = await _showSeriesActionDialog(
+        context: context,
+        title: 'Update Series',
+        message:
+            'These changes will update this recurrence. Pending tasks will shrink or expand to match the end date, and the time will be updated if it changed.',
+        confirmLabel: 'Update Series',
+      );
+      if (!proceed) {
+        return null;
+      }
+
+      return _SeriesUpdatePlan.future(
+        'bounds',
+      );
+    }
+
+    if (timeChanged) {
+      final scope = await _showEditScopeDialog(context);
+      if (scope == null || scope == 'cancel') {
+        return null;
+      }
+
+      return _SeriesUpdatePlan(
+        scope: scope,
+        updateScope: scope == 'future' ? 'modify' : null,
+      );
+    }
+    return _SeriesUpdatePlan.single();
+  }
+
+  Future<void> _updateSingleTaskFromForm({
+    required TaskOccurrence occurrence,
+    required String title,
+    required String description,
+    required DateTime selectedDate,
+    required String currentStatus,
+    required bool proofRequired,
+    required String selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+  }) async {
+    final resource = selectedResource ?? 'food';
+    final template = occurrence.template;
+    final templateChanged = title != template?.title ||
+        description != template?.description ||
+        proofRequired != template?.proofRequired ||
+        resource != template?.resource ||
+        resourceAmount != template?.resourceAmount;
+    final occurrenceChanged = !_isSameDate(occurrence.dueDate, selectedDate) ||
+        !_isSameTime(occurrence.dueDate, selectedDate) ||
+        currentStatus != occurrence.status ||
+        selectedChildId != occurrence.childId;
+
+    if (templateChanged) {
+      await _taskRepository.updateTemplate(
+        templateId: occurrence.templateId,
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+      );
+    }
+
+    if (occurrenceChanged) {
+      await _taskRepository.updateOccurrence(
+        occurrenceId: occurrence.id,
+        dueDate: selectedDate,
+        status: currentStatus,
+        childId: selectedChildId,
+      );
+    }
+
+    _replaceTaskInState(
+      occurrence: occurrence,
+      selectedDate: selectedDate,
+      currentStatus: currentStatus,
+      selectedChildId: selectedChildId,
+      title: title,
+      description: description,
+      proofRequired: proofRequired,
+      selectedResource: resource,
+      resourceAmount: resourceAmount,
+    );
+  }
+  void _replaceTaskInState({
+    required TaskOccurrence occurrence,
+    required DateTime selectedDate,
+    required String currentStatus,
+    required String selectedChildId,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String selectedResource,
+    required int resourceAmount,
+  }) {
+    final index = _tasks.indexWhere((task) => task.id == occurrence.id);
+    if (index == -1) {
+      return;
+    }
+
+    setState(() {
+      _tasks[index] = _tasks[index].copyWith(
+        dueDate: selectedDate,
+        status: currentStatus,
+        childId: selectedChildId,
+        childName: _childNameFor(selectedChildId),
+        template: _tasks[index].template!.copyWith(
+          title: title,
+          description: description,
+          proofRequired: proofRequired,
+          resource: selectedResource,
+          resourceAmount: resourceAmount,
+        ),
+      );
+    });
+  }
+
+  _RecurrenceFields _recurrenceFromForm({
+    required String repeatOption,
+    required Map<String, dynamic>? customRecurrence,
+    required DateTime selectedDate,
+  }) {
+    if (repeatOption == 'Never') {
+      return const _RecurrenceFields(pattern: 'Never', interval: 1);
+    }
+
+    final isCustom = repeatOption == 'Custom';
+    final pattern = isCustom
+        ? _normalizeRecurrencePattern(
+            (customRecurrence?['pattern'] as String?) ?? 'Daily',
+          )
+        : _normalizeRecurrencePattern(repeatOption);
+    final interval = isCustom
+        ? (customRecurrence?['interval'] as int?) ?? 1
+        : 1;
+    final customDays = isCustom
+        ? List<int>.from(customRecurrence?['selectedDays'] ?? [])
+        : null;
+    final selectedDays = customDays == null || customDays.isEmpty
+        ? null
+        : customDays;
+
+    return _RecurrenceFields(
+      pattern: pattern,
+      interval: interval,
+      dayOfWeek: pattern == 'Weekly'
+          ? selectedDays ?? [selectedDate.weekday]
+          : null,
+      dayOfMonth: pattern == 'Monthly'
+          ? selectedDays ?? [selectedDate.day]
+          : null,
+    );
+  }
+
+  bool _recurrenceChanged(
+    TaskOccurrence occurrence,
+    _RecurrenceFields recurrence,
+  ) {
+    final oldRecurrence = occurrence.template?.recurrence;
+    final oldPattern = _normalizeRecurrencePattern(
+      oldRecurrence?.pattern ?? 'Never',
+    );
+
+    if (recurrence.pattern != oldPattern) {
+      return true;
+    }
+    if (oldRecurrence == null) {
+      return false;
+    }
+    if (oldRecurrence.interval != recurrence.interval) {
+      return true;
+    }
+    if (recurrence.pattern == 'Weekly') {
+      return !_sameIntList(
+        oldRecurrence.dayOfWeek ?? [],
+        recurrence.dayOfWeek ?? [],
+      );
+    }
+    if (recurrence.pattern == 'Monthly') {
+      return !_sameIntList(
+        oldRecurrence.dayOfMonth ?? [],
+        recurrence.dayOfMonth ?? [],
+      );
+    }
+
+    return false;
+  }
+
+  bool _recurrencePatternChanged(
+    TaskOccurrence occurrence,
+    _RecurrenceFields recurrence,
+  ) {
+    final oldPattern = _normalizeRecurrencePattern(
+      occurrence.template?.recurrence?.pattern ?? 'Never',
+    );
+
+    return recurrence.pattern != oldPattern;
+  }
+
+  String _normalizeRecurrencePattern(String pattern) {
+    switch (pattern.toLowerCase()) {
+      case 'never':
+        return 'Never';
+      case 'daily':
+        return 'Daily';
+      case 'weekly':
+        return 'Weekly';
+      case 'monthly':
+        return 'Monthly';
+      default:
+        return pattern;
+    }
+  }
+
+  bool _basicTaskInfoChanged({
+    required TaskOccurrence occurrence,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String selectedChildId,
+    required String? selectedResource,
+    required int resourceAmount,
+  }) {
+    final template = occurrence.template;
+
+    return title != template?.title ||
+        description != template?.description ||
+        proofRequired != template?.proofRequired ||
+        selectedChildId != occurrence.childId ||
+        (selectedResource ?? 'food') != template?.resource ||
+        resourceAmount != template?.resourceAmount;
+  }
+
+  bool _isSameDate(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
+  bool _isSameOptionalDate(DateTime? first, DateTime? second) {
+    if (first == null || second == null) {
+      return first == second;
+    }
+
+    return _isSameDate(first, second);
+  }
+
+  bool _isSameTime(DateTime first, DateTime second) {
+    return first.hour == second.hour && first.minute == second.minute;
+  }
+
+  bool _endDateMovedEarlier(DateTime? oldEndDate, DateTime? newEndDate) {
+    if (newEndDate == null) {
+      return false;
+    }
+
+    if (oldEndDate == null) {
+      return true;
+    }
+
+    if (_isSameDate(oldEndDate, newEndDate)) {
+      return false;
+    }
+
+    return newEndDate.isBefore(oldEndDate);
+  }
+
+  bool _sameIntList(List<int> first, List<int> second) {
+    final sortedFirst = [...first]..sort();
+    final sortedSecond = [...second]..sort();
+
+    return listEquals(sortedFirst, sortedSecond);
+  }
+
+  DateTime? _endOfDay(DateTime? date) {
+    return date?.copyWith(
+      hour: 23,
+      minute: 59,
+      second: 59,
+      millisecond: 999,
+      microsecond: 999,
+    );
+  }
+
+  String _childNameFor(String selectedChildId) {
+    return _availableChildren.firstWhere(
+      (child) => child['id'] == selectedChildId,
+      orElse: () => {'name': 'Unknown'},
+    )['name'].toString();
   }
 
   Future<DateTime?> _showCustomDateTimePicker(
@@ -1334,7 +1296,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: 10),
-                      // 1. Calendar
                       SizedBox(
                         height: 320,
                         child: CalendarDatePicker(
@@ -1353,7 +1314,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                           },
                         ),
                       ),
-                      // 2. Quick Select Chips
                       if (showTime) ...[
                         Padding(
                           padding: const EdgeInsets.only(
@@ -1383,7 +1343,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         ),
                         const Divider(height: 1),
 
-                        // 3. Time Picker\
                         SizedBox(
                           height: 120,
                           child: CupertinoTheme(
@@ -1406,7 +1365,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                           ),
                         ),
                       ],
-                      // 4. Error Message (e.g. for past date selection)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: Text(
@@ -1423,7 +1381,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                   ),
                 ),
                 actions: [
-                  // 1. The Clear Button
                   if (!showTime)
                     TextButton(
                       onPressed: () {
@@ -1436,14 +1393,12 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                       ),
                       child: const Text("Clear"),
                     ),
-                  const Spacer(), // Pushes OK and Cancel to the right
-                  // 2. The Cancel Button
+                  const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text("Cancel"),
                   ),
 
-                  // 3. The OK Button
                   FilledButton.tonal(
                     onPressed: () {
                       final finalResult = DateTime(
@@ -1478,9 +1433,9 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Edit Recurring Task"),
+          title: const Text("Update Time"),
           content: const Text(
-            "You changed the details of a repeating task. How would you like to save these changes?",
+            "You changed only the time for this repeating task. Should this affect just this task or this and future tasks?",
           ),
           actions: [
             TextButton(
@@ -1530,7 +1485,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
 
   Future<void> _handleBulkDelete() async {
     if (_selectedTaskIds.isEmpty) return;
-    final TaskRepository taskRepository = TaskRepository();
 
     bool confirm = await _showDeleteConfirmation(context);
     if (!confirm) return;
@@ -1542,7 +1496,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           .map((t) => t.templateId)
           .toList();
 
-      await taskRepository.deleteTasksBulk(
+      await _taskRepository.deleteTasksBulk(
         _selectedTaskIds.toList(),
         templateIds,
       );
@@ -1595,6 +1549,32 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         false;
   }
 
+  Future<bool> _showSeriesActionDialog({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(confirmLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Future<bool> _showForcedUpdateDialog(BuildContext context) async {
     return await showDialog<bool>(
           context: context,
@@ -1616,5 +1596,291 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           ),
         ) ??
         false;
+  }
+}
+
+class _RecurrenceFields {
+  const _RecurrenceFields({
+    required this.pattern,
+    required this.interval,
+    this.dayOfWeek,
+    this.dayOfMonth,
+  });
+
+  final String pattern;
+  final int interval;
+  final List<int>? dayOfWeek;
+  final List<int>? dayOfMonth;
+}
+
+class _SeriesUpdatePlan {
+  const _SeriesUpdatePlan({
+    required this.scope,
+    this.updateScope,
+  });
+
+  factory _SeriesUpdatePlan.single() {
+    return const _SeriesUpdatePlan(scope: 'single');
+  }
+
+  factory _SeriesUpdatePlan.future(String updateScope) {
+    return _SeriesUpdatePlan(scope: 'future', updateScope: updateScope);
+  }
+
+  final String scope;
+  final String? updateScope;
+}
+
+class _TaskCard extends StatelessWidget {
+  const _TaskCard({
+    required this.occurrence,
+    required this.isSelectionMode,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final TaskOccurrence occurrence;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final template = occurrence.template;
+    final isDone = occurrence.status == 'COMP';
+
+    if (template == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Opacity(
+      opacity: isDone ? 0.6 : 1,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 14),
+        color: _cardColor(colorScheme, isDone),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: _borderColor(colorScheme, isDone)),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                if (isSelectionMode) _SelectionIcon(isSelected: isSelected),
+                _ChildAvatarWithStatus(
+                  avatarUrl: occurrence.childAvatar,
+                  isDone: isDone,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _TaskCardDetails(
+                    occurrence: occurrence,
+                    isDone: isDone,
+                  ),
+                ),
+                _TaskCardTrailing(
+                  dueDate: occurrence.dueDate,
+                  isDone: isDone,
+                  showChevron: !isSelectionMode,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _cardColor(ColorScheme colorScheme, bool isDone) {
+    if (isSelected) {
+      return colorScheme.primaryContainer;
+    }
+
+    return isDone ? colorScheme.surfaceContainerHigh : colorScheme.surface;
+  }
+  Color _borderColor(ColorScheme colorScheme, bool isDone) {
+    if (isSelected) {
+      return colorScheme.primary.withAlpha(100);
+    }
+
+    return isDone ? Colors.transparent : colorScheme.primary.withAlpha(50);
+  }
+}
+
+class _SelectionIcon extends StatelessWidget {
+  const _SelectionIcon({required this.isSelected});
+
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Icon(
+        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        color: isSelected ? colorScheme.primary : colorScheme.outline,
+        size: 20,
+      ),
+    );
+  }
+}
+
+class _ChildAvatarWithStatus extends StatelessWidget {
+  const _ChildAvatarWithStatus({
+    required this.avatarUrl,
+    required this.isDone,
+  });
+
+  final String avatarUrl;
+  final bool isDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: colorScheme.surfaceDim,
+          backgroundImage: avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
+          child: avatarUrl.isEmpty ? const Icon(Icons.person) : null,
+        ),
+        if (isDone)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check, size: 10, color: colorScheme.onPrimary),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TaskCardDetails extends StatelessWidget {
+  const _TaskCardDetails({
+    required this.occurrence,
+    required this.isDone,
+  });
+
+  final TaskOccurrence occurrence;
+  final bool isDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final template = occurrence.template!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          template.title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            decoration: isDone ? TextDecoration.lineThrough : null,
+            color: isDone ? colorScheme.outline : colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              occurrence.childName,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: colorScheme.secondary,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.stars_rounded,
+              size: 14,
+              color: Colors.orangeAccent,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              "${template.resourceAmount} ${template.resource}",
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TaskCardTrailing extends StatelessWidget {
+  const _TaskCardTrailing({
+    required this.dueDate,
+    required this.isDone,
+    required this.showChevron,
+  });
+
+  final DateTime dueDate;
+  final bool isDone;
+  final bool showChevron;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _DueChip(date: dueDate, isDone: isDone),
+        if (showChevron) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right, size: 20, color: colorScheme.outline),
+        ],
+      ],
+    );
+  }
+}
+class _DueChip extends StatelessWidget {
+  const _DueChip({required this.date, required this.isDone});
+
+  final DateTime date;
+  final bool isDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = isDone ? colorScheme.outline : colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withAlpha(0x1A),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        DateFormat('MMM d').format(date),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }

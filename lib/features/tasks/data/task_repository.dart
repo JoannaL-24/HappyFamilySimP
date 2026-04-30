@@ -100,10 +100,12 @@ class TaskRepository {
             'title': title,
             'description': description,
             'proof_required': proofRequired,
-            'resource': resource.toLowerCase(),
-            'resource_amount': resourceAmount,
-          })
-          .eq('id', templateId);
+          'resource': resource.toLowerCase(),
+          'resource_amount': resourceAmount,
+        })
+          .eq('id', templateId)
+          .select('id')
+          .single();
     } catch (e) {
       debugPrint('Error updating task template: $e');
       throw Exception('Failed to save changes.');
@@ -126,7 +128,9 @@ class TaskRepository {
             'status': status,
             'child_id': childId,
           })
-          .eq('id', occurrenceId);
+          .eq('id', occurrenceId)
+          .select('id')
+          .single();
     } catch (e) {
       debugPrint('Error updating task occurrence: $e');
       throw Exception('Failed to update task occurrence.');
@@ -211,17 +215,22 @@ class TaskRepository {
     required String childId,
     required DateTime dueDate,
 
-    required String pattern, // 'daily', 'weekly', 'monthly'
+    required String pattern, // 'Daily', 'Weekly', 'Monthly'
     required int interval,
     List<int>? dayOfWeek,
     List<int>? dayOfMonth,
     DateTime? endDate,
   }) async {
+    final normalizedPattern = _normalizePattern(pattern);
+    if (!_isRecurringPattern(normalizedPattern)) {
+      throw ArgumentError('Invalid recurring pattern: $pattern');
+    }
+
     // 1. Create the Recurrence Pattern first
     final recurrenceData = await _supabase
         .from('task_recurrence')
         .insert({
-          'pattern': pattern,
+          'pattern': normalizedPattern,
           'interval': interval,
           'day_of_week': dayOfWeek,
           'day_of_month': dayOfMonth,
@@ -233,15 +242,7 @@ class TaskRepository {
 
     // 2. Create the Template with the link to the recurrence
     // set last_generated_until to null for now
-    if (endDate != null) {
-      endDate = endDate.copyWith(
-        hour: 23,
-        minute: 59,
-        second: 0, // Optional: reset seconds/ms for a clean comparison
-        millisecond: 0,
-        microsecond: 0,
-      );
-    }
+    endDate = _endOfDay(endDate);
     final templateData = await _supabase
         .from('task_template')
         .insert({
@@ -262,7 +263,7 @@ class TaskRepository {
 
     // 3. Generate the first 14 days of occurrences using Scheduler
     final List<DateTime> dates = TaskScheduler.generateDates(
-      startDate: DateTime.now().copyWith(
+      startDate: dueDate.copyWith(
         hour: dueDate.hour,
         minute: dueDate.minute,
         second: 0,
@@ -270,7 +271,7 @@ class TaskRepository {
         microsecond: 0,
       ),
       endDate: endDate,
-      pattern: pattern,
+      pattern: normalizedPattern,
       interval: interval,
       dayOfWeek: dayOfWeek,
       dayOfMonth: dayOfMonth,
@@ -316,166 +317,762 @@ class TaskRepository {
   }
 
   Future<void> updateRecurringSeries({
-  required int templateId,
-  required int? recurrenceId,
-  required String title,
-  required String description,
-  required bool proofRequired,
-  required String resource,
-  required int resourceAmount,
-  required String childId,
-  required DateTime startDate,
-  required DateTime oldDueDate,
-  required String pattern,
-  required int interval,
-  List<int>? dayOfWeek,
-  List<int>? dayOfMonth,
-  DateTime? endDate,
-  DateTime? oldEndDate,
-  required String updateScope, // 'rewrite' or 'alter'
-}) async {
-  
-  // 1. Handle "Recurring to Single" Breakaway
-  if (pattern.toLowerCase() == 'never') {
-    final int? oldRecurrenceId = recurrenceId;
+    required int templateId,
+    required int? recurrenceId,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String resource,
+    required int resourceAmount,
+    required String childId,
+    required DateTime startDate,
+    required DateTime oldDueDate,
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+    DateTime? endDate,
+    DateTime? oldEndDate,
+    required String updateScope,
+    bool updateChildAssignments = false,
+    bool syncGeneratedOccurrences = false,
+  }) async {
+    final normalizedPattern = _normalizePattern(pattern);
+    final normalizedEndDate = _endOfDay(endDate);
+    final targetTime = _formatTimeForDate(startDate);
 
-    await _supabase.from('task_occurrence')
-        .delete()
-        .eq('task_template_id', templateId)
-        .eq('status', 'NOTD')
-        .gt('due_date', oldDueDate.toIso8601String());
-
-    await _supabase.from('task_template').update({
-      'title': title, 'description': description, 'proof_required': proofRequired, 'resource': resource.toLowerCase(), 'resource_amount': resourceAmount,
-      'task_recurrence_id': null, 'end_date': null, 'last_generated_until': null, 'target_time': null,
-    }).eq('id', templateId);
-
-    if (oldRecurrenceId != null) {
-      await _supabase.from('task_recurrence').delete().eq('id', oldRecurrenceId);
-    }
-
-    await _supabase.from('task_occurrence').insert({
-      'task_template_id': templateId,
-      'child_id': childId,
-      'due_date': startDate.toIso8601String(),
-      'status': 'NOTD',
-    });
-    return;
-  }
-
-  // 2. Prep data for updates
-  final ruleData = {
-    'pattern': pattern,
-    'interval': interval,
-    'day_of_week': dayOfWeek,
-    'day_of_month': dayOfMonth,
-  };
-  final String targetTime = "${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}:00";
-  int currentRecId;
-
-// 3. Mode: "ALTER" (Just update metadata and time, no row deletion)
-  if (updateScope == 'alter') {
-  final String targetTime = "${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}:00";
-
-  // 1. Update the Template metadata and bounds
-  await _supabase.from('task_template').update({
-    'title': title,
-    'description': description,
-    'proof_required': proofRequired,
-    'resource': resource.toLowerCase(),
-    'resource_amount': resourceAmount,
-    'target_time': targetTime,
-    'end_date': endDate?.toIso8601String(),
-    // We nullify last_generated_until if the end_date moved earlier 
-    // to ensure the scheduler stays in sync
-    if (endDate != null) 'last_generated_until': null, 
-  }).eq('id', templateId);
-
-  // 2. DELETE occurrences that are now outside the new end_date
-  // (Occurrence > New End Date)
-  if (endDate != null) {
-    await _supabase.from('task_occurrence')
-        .delete()
-        .eq('task_template_id', templateId)
-        .eq('status', 'NOTD')
-        .gt('due_date', endDate.toIso8601String());
-  }
-
-  // 3. UPDATE TIME for occurrences in the valid window
-  // (Current Task Date <= Occurrence <= New End Date)
-  final futureTasks = await _supabase.from('task_occurrence')
-      .select('id, due_date')
-      .eq('task_template_id', templateId)
-      .eq('status', 'NOTD')
-      .gte('due_date', startDate.toIso8601String());
-
-  for (var task in futureTasks) {
-    DateTime occDate = DateTime.parse(task['due_date']);
-    
-    // Only update if it falls within the new end_date (or if there is no end_date)
-    if (endDate == null || !occDate.isAfter(endDate)) {
-      DateTime mergedDate = DateTime(
-        occDate.year, 
-        occDate.month, 
-        occDate.day, 
-        startDate.hour, 
-        startDate.minute, 
-        0
+    if (updateScope == 'bounds') {
+      await _updateSeriesMetadataAndBounds(
+        templateId: templateId,
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+        childId: childId,
+        updateChildAssignments: updateChildAssignments,
+        endDate: normalizedEndDate,
+        startDate: startDate,
+        pattern: normalizedPattern,
+        interval: interval,
+        dayOfWeek: dayOfWeek,
+        dayOfMonth: dayOfMonth,
+        syncGeneratedOccurrences: syncGeneratedOccurrences,
       );
-      
-      await _supabase.from('task_occurrence')
-          .update({'due_date': mergedDate.toIso8601String()})
-          .eq('id', task['id']);
+      return;
+    }
+
+    if (updateScope == 'template') {
+      await _updateTemplateMetadata(
+        templateId: templateId,
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+        childId: childId,
+        updateChildAssignments: updateChildAssignments,
+      );
+      return;
+    }
+
+    if (normalizedPattern != 'Never' && !_isRecurringPattern(normalizedPattern)) {
+      throw ArgumentError('Invalid recurring pattern: $pattern');
+    }
+
+    if (normalizedPattern == 'Never') {
+      final newTemplateId = await _insertTaskTemplate(
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+      );
+
+      await _supabase.from('task_occurrence').insert({
+        'task_template_id': newTemplateId,
+        'child_id': childId,
+        'due_date': startDate.toIso8601String(),
+        'status': 'NOTD',
+      });
+
+      await _capTemplateBefore(templateId, oldDueDate);
+      await _deletePendingFutureOccurrences(templateId, oldDueDate);
+      await _deleteTemplateAndRecurrenceIfUnused(
+        templateId: templateId,
+        recurrenceId: recurrenceId,
+      );
+      return;
+    }
+
+    if (updateScope == 'rewriteAll') {
+      await _rewriteEntirePendingSeries(
+        templateId: templateId,
+        recurrenceId: recurrenceId,
+        title: title,
+        description: description,
+        proofRequired: proofRequired,
+        resource: resource,
+        resourceAmount: resourceAmount,
+        childId: childId,
+        startDate: startDate,
+        endDate: normalizedEndDate,
+        targetTime: targetTime,
+        pattern: normalizedPattern,
+        interval: interval,
+        dayOfWeek: dayOfWeek,
+        dayOfMonth: dayOfMonth,
+      );
+      return;
+    }
+
+    final newRecurrenceId = await _insertTaskRecurrence(
+      pattern: normalizedPattern,
+      interval: interval,
+      dayOfWeek: dayOfWeek,
+      dayOfMonth: dayOfMonth,
+    );
+    final newTemplateId = await _insertTaskTemplate(
+      title: title,
+      description: description,
+      proofRequired: proofRequired,
+      resource: resource,
+      resourceAmount: resourceAmount,
+      recurrenceId: newRecurrenceId,
+      endDate: normalizedEndDate,
+      targetTime: targetTime,
+    );
+
+    if (updateScope == 'modify') {
+      await _movePendingFutureOccurrences(
+        oldTemplateId: templateId,
+        newTemplateId: newTemplateId,
+        childId: childId,
+        oldDueDate: oldDueDate,
+        startDate: startDate,
+        endDate: normalizedEndDate,
+      );
+      await _fillMissingGeneratedOccurrences(
+        templateId: newTemplateId,
+        childId: childId,
+        anchorDate: startDate,
+        endDate: normalizedEndDate,
+        pattern: normalizedPattern,
+        interval: interval,
+        dayOfWeek: dayOfWeek,
+        dayOfMonth: dayOfMonth,
+      );
+      await _capTemplateBefore(templateId, oldDueDate);
+      await _deleteTemplateAndRecurrenceIfUnused(
+        templateId: templateId,
+        recurrenceId: recurrenceId,
+      );
+      return;
+    }
+
+    if (updateScope == 'rewrite') {
+      await _insertGeneratedOccurrences(
+        templateId: newTemplateId,
+        childId: childId,
+        startDate: startDate,
+        endDate: normalizedEndDate,
+        pattern: normalizedPattern,
+        interval: interval,
+        dayOfWeek: dayOfWeek,
+        dayOfMonth: dayOfMonth,
+      );
+      await _deletePendingFutureOccurrences(templateId, oldDueDate);
+      await _capTemplateBefore(templateId, oldDueDate);
+      await _deleteTemplateAndRecurrenceIfUnused(
+        templateId: templateId,
+        recurrenceId: recurrenceId,
+      );
+      return;
+    }
+
+    throw ArgumentError('Unknown recurring update scope: $updateScope');
+  }
+
+  Future<void> _updateSeriesMetadataAndBounds({
+    required int templateId,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String resource,
+    required int resourceAmount,
+    required String childId,
+    required bool updateChildAssignments,
+    required DateTime? endDate,
+    required DateTime startDate,
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+    required bool syncGeneratedOccurrences,
+  }) async {
+    await _supabase
+        .from('task_template')
+        .update({
+          'parent_id': _supabase.auth.currentUser!.id,
+          'title': title,
+          'description': description,
+          'proof_required': proofRequired,
+          'resource': resource.toLowerCase(),
+          'resource_amount': resourceAmount,
+          'end_date': endDate?.toIso8601String(),
+          'target_time': _formatTimeForDate(startDate),
+        })
+        .eq('id', templateId)
+        .select('id')
+        .single();
+
+    if (updateChildAssignments) {
+      await _supabase
+          .from('task_occurrence')
+          .update({'child_id': childId})
+          .eq('task_template_id', templateId)
+          .eq('status', 'NOTD');
+    }
+
+    await _updatePendingOccurrenceTimes(
+      templateId: templateId,
+      timeSource: startDate,
+      endDate: endDate,
+    );
+
+    if (!syncGeneratedOccurrences) {
+      return;
+    }
+
+    if (endDate != null) {
+      await _supabase
+          .from('task_occurrence')
+          .delete()
+          .eq('task_template_id', templateId)
+          .eq('status', 'NOTD')
+          .gt('due_date', endDate.toIso8601String());
+    }
+
+    await _fillMissingGeneratedOccurrences(
+      templateId: templateId,
+      childId: childId,
+      anchorDate: startDate,
+      endDate: endDate,
+      pattern: pattern,
+      interval: interval,
+      dayOfWeek: dayOfWeek,
+      dayOfMonth: dayOfMonth,
+    );
+  }
+
+  Future<void> _updateTemplateMetadata({
+    required int templateId,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String resource,
+    required int resourceAmount,
+    required String childId,
+    required bool updateChildAssignments,
+  }) async {
+    await _supabase
+        .from('task_template')
+        .update({
+          'parent_id': _supabase.auth.currentUser!.id,
+          'title': title,
+          'description': description,
+          'proof_required': proofRequired,
+          'resource': resource.toLowerCase(),
+          'resource_amount': resourceAmount,
+        })
+        .eq('id', templateId)
+        .select('id')
+        .single();
+
+    if (updateChildAssignments) {
+      await _supabase
+          .from('task_occurrence')
+          .update({'child_id': childId})
+          .eq('task_template_id', templateId)
+          .eq('status', 'NOTD');
     }
   }
 
-  return;
-}
+  Future<void> _rewriteEntirePendingSeries({
+    required int templateId,
+    required int? recurrenceId,
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String resource,
+    required int resourceAmount,
+    required String childId,
+    required DateTime startDate,
+    required DateTime? endDate,
+    required String targetTime,
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+  }) async {
+    int currentRecurrenceId;
+    if (recurrenceId == null) {
+      currentRecurrenceId = await _insertTaskRecurrence(
+        pattern: pattern,
+        interval: interval,
+        dayOfWeek: dayOfWeek,
+        dayOfMonth: dayOfMonth,
+      );
+    } 
+    else {
+      currentRecurrenceId = recurrenceId;
+      // await _supabase
+      //     .from('task_recurrence')
+      //     .update({
+      //       'pattern': pattern,
+      //       'interval': interval,
+      //       'day_of_week': dayOfWeek,
+      //       'day_of_month': dayOfMonth,
+      //     })
+      //     .eq('id', recurrenceId);
+    }
 
-  // 4. Mode: "REWRITE" (Nuke future and Pave)
-  if (updateScope == 'rewrite') {
-    final oldestOccurrence = await _supabase
-          .from('task_occurrence')
-          .select('due_date')
-          .eq('task_template_id', templateId)
-          .order('due_date', ascending: true)
-          .limit(1)
-          .maybeSingle();
+    await _supabase
+        .from('task_template')
+        .update({
+          'parent_id': _supabase.auth.currentUser!.id,
+          'title': title,
+          'description': description,
+          'proof_required': proofRequired,
+          'resource': resource.toLowerCase(),
+          'resource_amount': resourceAmount,
+          'task_recurrence_id': currentRecurrenceId,
+          'target_time': targetTime,
+          'end_date': endDate?.toIso8601String(),
+          'last_generated_until': null,
+        })
+        .eq('id', templateId)
+        .select('id')
+        .single();
 
-    await _supabase.from('task_occurrence')
+    await _supabase
+        .from('task_occurrence')
         .delete()
         .eq('task_template_id', templateId)
         .eq('status', 'NOTD');
 
-    if (recurrenceId == null) {
-      final rec = await _supabase.from('task_recurrence').insert(ruleData).select().single();
-      currentRecId = rec['id'];
-    } else {
-      await _supabase.from('task_recurrence').update(ruleData).eq('id', recurrenceId);
-      currentRecId = recurrenceId;
-    }
-
-    await _supabase.from('task_template').update({
-      'title': title, 'description': description, 'proof_required': proofRequired,
-      'task_recurrence_id': currentRecId, 'target_time': targetTime, 'end_date': endDate?.toIso8601String(),
-      'resource': resource.toLowerCase(), 'resource_amount': resourceAmount,
-    }).eq('id', templateId);
-  //TODO: alter end date, adding problem
-    final List<DateTime> nextDates = TaskScheduler.generateDates(
-      startDate: oldestOccurrence != null ? DateTime.parse(oldestOccurrence['due_date']) : startDate,
-      endDate: endDate ?? startDate.add(const Duration(days: 365)),
-      pattern: pattern, interval: interval, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth, daysToPrepopulate: 14,
+    await _insertGeneratedOccurrences(
+      templateId: templateId,
+      childId: childId,
+      startDate: startDate,
+      endDate: endDate,
+      pattern: pattern,
+      interval: interval,
+      dayOfWeek: dayOfWeek,
+      dayOfMonth: dayOfMonth,
     );
+  }
 
-    if (nextDates.isNotEmpty) {
-      final occurrences = nextDates.map((date) => {
-        'child_id': childId, 'task_template_id': templateId, 'due_date': date.toIso8601String(), 'status': 'NOTD',
-      }).toList();
-      await _supabase.from('task_occurrence').insert(occurrences);
-      await _supabase.from('task_template')
-          .update({'last_generated_until': nextDates.last.toIso8601String()})
-          .eq('id', templateId);
+  String _formatTimeForDate(DateTime date) {
+    final hours = date.hour.toString().padLeft(2, '0');
+    final minutes = date.minute.toString().padLeft(2, '0');
+    return '$hours:$minutes:00';
+  }
+
+  String _normalizePattern(String pattern) {
+    switch (pattern.toLowerCase()) {
+      case 'never':
+        return 'Never';
+      case 'daily':
+        return 'Daily';
+      case 'weekly':
+        return 'Weekly';
+      case 'monthly':
+        return 'Monthly';
+      default:
+        return pattern;
     }
   }
-}
+
+
+  // TODO: embed
+  bool _isRecurringPattern(String pattern) {
+    return pattern == 'Daily' || pattern == 'Weekly' || pattern == 'Monthly';
+  }
+
+  DateTime? _endOfDay(DateTime? date) {
+    return date?.copyWith(
+      hour: 23,
+      minute: 59,
+      second: 59,
+      millisecond: 999,
+      microsecond: 999,
+    );
+  }
+
+  DateTime _before(DateTime date) {
+    return date.subtract(const Duration(microseconds: 1));
+  }
+
+  DateTime _withTime(DateTime date, DateTime timeSource) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      timeSource.hour,
+      timeSource.minute,
+    );
+  }
+
+  Future<void> _capTemplateBefore(int templateId, DateTime boundary) async {
+    final capDate = await _lastOccurrenceBefore(templateId, boundary);
+    final endDate = capDate == null ? _before(boundary) : _endOfDay(capDate)!;
+    final lastGeneratedUntil = capDate ?? _before(boundary);
+
+    await _supabase
+        .from('task_template')
+        .update({
+          'end_date': endDate.toIso8601String(),
+          'last_generated_until': lastGeneratedUntil.toIso8601String(),
+        })
+        .eq('id', templateId)
+        .select('id')
+        .single();
+  }
+
+  Future<DateTime?> _lastOccurrenceBefore(
+    int templateId,
+    DateTime boundary,
+  ) async {
+    final response = await _supabase
+        .from('task_occurrence')
+        .select('due_date')
+        .eq('task_template_id', templateId)
+        .lt('due_date', boundary.toIso8601String())
+        .order('due_date', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) {
+      return null;
+    }
+
+    return DateTime.parse(response['due_date']);
+  }
+
+  Future<void> _deleteTemplateAndRecurrenceIfUnused({
+    required int templateId,
+    required int? recurrenceId,
+  }) async {
+    final remainingOccurrences = await _supabase
+        .from('task_occurrence')
+        .select('id')
+        .eq('task_template_id', templateId)
+        .limit(1);
+
+    if ((remainingOccurrences as List).isNotEmpty) {
+      return;
+    }
+
+    await _supabase
+        .from('task_template')
+        .delete()
+        .eq('id', templateId);
+
+    if (recurrenceId == null) {
+      return;
+    }
+
+    final remainingTemplates = await _supabase
+        .from('task_template')
+        .select('id')
+        .eq('task_recurrence_id', recurrenceId)
+        .limit(1);
+
+    if ((remainingTemplates as List).isNotEmpty) {
+      return;
+    }
+
+    await _supabase
+        .from('task_recurrence')
+        .delete()
+        .eq('id', recurrenceId);
+  }
+
+  Future<int> _insertTaskRecurrence({
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+  }) async {
+    if (!_isRecurringPattern(pattern)) {
+      throw ArgumentError('Invalid recurring pattern: $pattern');
+    }
+
+    final response = await _supabase
+        .from('task_recurrence')
+        .insert({
+          'pattern': pattern,
+          'interval': interval,
+          'day_of_week': dayOfWeek,
+          'day_of_month': dayOfMonth,
+        })
+        .select('id')
+        .single();
+
+    return response['id'];
+  }
+
+  Future<int> _insertTaskTemplate({
+    required String title,
+    required String description,
+    required bool proofRequired,
+    required String resource,
+    required int resourceAmount,
+    int? recurrenceId,
+    DateTime? endDate,
+    String? targetTime,
+  }) async {
+    final response = await _supabase
+        .from('task_template')
+        .insert({
+          'parent_id': _supabase.auth.currentUser!.id,
+          'title': title,
+          'description': description,
+          'proof_required': proofRequired,
+          'task_recurrence_id': recurrenceId,
+          'end_date': endDate?.toIso8601String(),
+          'target_time': targetTime,
+          'resource': resource.toLowerCase(),
+          'resource_amount': resourceAmount,
+        })
+        .select('id')
+        .single();
+
+    return response['id'];
+  }
+
+  Future<void> _deletePendingFutureOccurrences(
+    int templateId,
+    DateTime oldDueDate,
+  ) async {
+    await _supabase
+        .from('task_occurrence')
+        .delete()
+        .eq('task_template_id', templateId)
+        .eq('status', 'NOTD')
+        .gte('due_date', oldDueDate.toIso8601String());
+  }
+
+  Future<void> _movePendingFutureOccurrences({
+    required int oldTemplateId,
+    required int newTemplateId,
+    required String childId,
+    required DateTime oldDueDate,
+    required DateTime startDate,
+    required DateTime? endDate,
+  }) async {
+    final futureTasks = await _supabase
+        .from('task_occurrence')
+        .select('id, due_date')
+        .eq('task_template_id', oldTemplateId)
+        .eq('status', 'NOTD')
+        .gte('due_date', oldDueDate.toIso8601String());
+
+    DateTime? lastMovedDate;
+
+    for (final task in futureTasks) {
+      final occurrenceDate = DateTime.parse(task['due_date']);
+      final movedDate = DateTime(
+        occurrenceDate.year,
+        occurrenceDate.month,
+        occurrenceDate.day,
+        startDate.hour,
+        startDate.minute,
+      );
+
+      if (endDate != null && movedDate.isAfter(endDate)) {
+        await _supabase
+            .from('task_occurrence')
+            .delete()
+            .eq('id', task['id']);
+        continue;
+      }
+
+      await _supabase
+          .from('task_occurrence')
+          .update({
+            'task_template_id': newTemplateId,
+            'child_id': childId,
+            'due_date': movedDate.toIso8601String(),
+          })
+          .eq('id', task['id']);
+
+      if (lastMovedDate == null || movedDate.isAfter(lastMovedDate)) {
+        lastMovedDate = movedDate;
+      }
+    }
+
+    if (lastMovedDate != null) {
+      await _supabase
+          .from('task_template')
+          .update({'last_generated_until': lastMovedDate.toIso8601String()})
+          .eq('id', newTemplateId);
+    }
+  }
+
+  Future<void> _updatePendingOccurrenceTimes({
+    required int templateId,
+    required DateTime timeSource,
+    required DateTime? endDate,
+  }) async {
+    final pendingTasks = await _supabase
+        .from('task_occurrence')
+        .select('id, due_date')
+        .eq('task_template_id', templateId)
+        .eq('status', 'NOTD');
+
+    for (final task in pendingTasks) {
+      final occurrenceDate = DateTime.parse(task['due_date']);
+      if (endDate != null && occurrenceDate.isAfter(endDate)) {
+        continue;
+      }
+
+      final movedDate = DateTime(
+        occurrenceDate.year,
+        occurrenceDate.month,
+        occurrenceDate.day,
+        timeSource.hour,
+        timeSource.minute,
+      );
+
+      await _supabase
+          .from('task_occurrence')
+          .update({'due_date': movedDate.toIso8601String()})
+          .eq('id', task['id']);
+    }
+  }
+
+  Future<void> _fillMissingGeneratedOccurrences({
+    required int templateId,
+    required String childId,
+    required DateTime anchorDate,
+    required DateTime? endDate,
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+  }) async {
+    final existingRows = await _supabase
+        .from('task_occurrence')
+        .select('due_date')
+        .eq('task_template_id', templateId)
+        .order('due_date', ascending: true);
+
+    final existingDates = (existingRows as List)
+        .map((row) => DateTime.parse(row['due_date']))
+        .where((date) => endDate == null || !date.isAfter(endDate))
+        .toList();
+    final existingKeys = existingDates.map(_occurrenceKey).toSet();
+    final latestExisting = existingDates.isEmpty ? null : existingDates.last;
+
+    final generatedDates = TaskScheduler.generateDates(
+      startDate: anchorDate,
+      endDate: endDate,
+      pattern: pattern,
+      interval: interval,
+      dayOfWeek: dayOfWeek,
+      dayOfMonth: dayOfMonth,
+      daysToPrepopulate: 365,
+    );
+
+    final datesToInsert = generatedDates.where((date) {
+      if (latestExisting != null && !date.isAfter(latestExisting)) {
+        return false;
+      }
+
+      return !existingKeys.contains(_occurrenceKey(date));
+    }).toList();
+
+    if (datesToInsert.isNotEmpty) {
+      await _supabase.from('task_occurrence').insert(
+            datesToInsert
+                .map(
+                  (date) => {
+                    'child_id': childId,
+                    'task_template_id': templateId,
+                    'due_date': date.toIso8601String(),
+                    'status': 'NOTD',
+                  },
+                )
+                .toList(),
+          );
+    }
+
+    final lastGeneratedUntil = datesToInsert.isNotEmpty
+        ? datesToInsert.last
+        : latestExisting;
+
+    await _supabase
+        .from('task_template')
+        .update({
+          'last_generated_until': lastGeneratedUntil?.toIso8601String(),
+        })
+        .eq('id', templateId)
+        .select('id')
+        .single();
+  }
+
+  String _occurrenceKey(DateTime date) {
+    return [
+      date.year.toString().padLeft(4, '0'),
+      date.month.toString().padLeft(2, '0'),
+      date.day.toString().padLeft(2, '0'),
+      date.hour.toString().padLeft(2, '0'),
+      date.minute.toString().padLeft(2, '0'),
+    ].join('-');
+  }
+
+  Future<void> _insertGeneratedOccurrences({
+    required int templateId,
+    required String childId,
+    required DateTime startDate,
+    required DateTime? endDate,
+    required String pattern,
+    required int interval,
+    List<int>? dayOfWeek,
+    List<int>? dayOfMonth,
+  }) async {
+    final dates = TaskScheduler.generateDates(
+      startDate: startDate,
+      endDate: endDate,
+      pattern: pattern,
+      interval: interval,
+      dayOfWeek: dayOfWeek,
+      dayOfMonth: dayOfMonth,
+      daysToPrepopulate: 14,
+    );
+
+    if (dates.isEmpty) {
+      return;
+    }
+
+    await _supabase.from('task_occurrence').insert(
+          dates
+              .map(
+                (date) => {
+                  'child_id': childId,
+                  'task_template_id': templateId,
+                  'due_date': date.toIso8601String(),
+                  'status': 'NOTD',
+                },
+              )
+              .toList(),
+        );
+
+    await _supabase
+        .from('task_template')
+        .update({'last_generated_until': dates.last.toIso8601String()})
+        .eq('id', templateId);
+  }
 }

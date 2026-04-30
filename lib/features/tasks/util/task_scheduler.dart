@@ -19,12 +19,12 @@ class TaskScheduler {
 
     while (current.isBefore(finalLimit) || current.isAtSameMomentAs(finalLimit)) {
       
-      if (pattern == 'daily') {
+      if (pattern == 'Daily') {
         dates.add(current);
         current = current.add(Duration(days: interval));
       } 
       
-      else if (pattern == 'weekly') {
+      else if (pattern == 'Weekly') {
         if (dayOfWeek != null && dayOfWeek.contains(current.weekday)) {
           dates.add(current);
         }
@@ -36,7 +36,7 @@ class TaskScheduler {
         }
       } 
       
-      else if (pattern == 'monthly') {
+      else if (pattern == 'Monthly') {
         // 1. Determine which days we are looking for this month
         // If the list is null/empty, we default to the day of the startDate
         final targetDays = (dayOfMonth != null && dayOfMonth.isNotEmpty) 

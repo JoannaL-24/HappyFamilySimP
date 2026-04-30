@@ -4,7 +4,7 @@ class TaskUtils {
   static String getCustomSummary(Map<String, dynamic>? customRecurrence) {
     if (customRecurrence == null) return "Custom";
 
-    final String pattern = customRecurrence['pattern'] ?? 'daily';
+    final String pattern = customRecurrence['pattern'] ?? 'Daily';
     final int interval = customRecurrence['interval'] ?? 1;
     final List<int> selectedDays = List<int>.from(
       customRecurrence['selectedDays'] ?? [],
@@ -13,11 +13,11 @@ class TaskUtils {
     // Helper for pluralization
     String plural(int val, String unit) => val > 1 ? '${unit}s' : unit;
 
-    if (pattern == 'daily') {
+    if (pattern == 'Daily') {
       return "Custom: Every $interval ${plural(interval, 'day')}";
     }
 
-    if (pattern == 'weekly') {
+    if (pattern == 'Weekly') {
       final weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       selectedDays.sort();
 
@@ -28,7 +28,7 @@ class TaskUtils {
       return "Custom: $dayNames for every $interval ${plural(interval, 'week')}";
     }
 
-    if (pattern == 'monthly') {
+    if (pattern == 'Monthly') {
       selectedDays.sort();
 
       String datesPart;
