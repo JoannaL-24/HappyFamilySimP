@@ -14,12 +14,14 @@ class PlacedItemComponent extends FurnitureSpriteComponent
     super.priorityOffset,
     required this.placementId,
     required this.itemId,
+    required this.spriteIndex,
     this.onMoved,
     this.onSelected,
   });
 
   final String placementId;
   final int itemId;
+  final int spriteIndex;
 
   bool editMode = false;
   bool isSelected = false;

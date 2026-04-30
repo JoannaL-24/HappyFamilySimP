@@ -59,4 +59,12 @@ class CosmeticRepository {
       _log.e('Error removing placement', error: e);
     }
   }
+
+  Future<void> grantOwnership(String childId, int itemId) async {
+    try {
+      await _service.grantOwnership(childId, itemId);
+    } on PostgrestException catch (e) {
+      _log.e('Error granting ownership', error: e);
+    }
+  }
 }

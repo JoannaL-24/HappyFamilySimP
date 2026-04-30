@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../game_engine.dart';
+import '../game_engine.dart' show kSecondsPerDepletionTick, kStatIncrement, kBoxPiecesRequired;
 import 'models.dart';
 
 class GameService {
@@ -21,6 +21,7 @@ class GameService {
         'fullness': 100,
         'happiness': 100,
         'cleanliness': 100,
+        'last_updated_at': DateTime.now().toUtc().toIso8601String(),
       });
     }
 
@@ -34,6 +35,7 @@ class GameService {
         'food': 5,
         'play': 5,
         'clean': 5,
+        'box_pieces': 0,
       });
     }
   }
@@ -47,20 +49,46 @@ class GameService {
     return Resources.fromJson(data);
   }
 
+  /// Fetches the creature, applies offline depletion based on elapsed time,
+  /// saves the updated stats back to DB, and returns the current creature.
   Future<Creature> fetchCreature(String childId) async {
     final data = await _supabase
         .from('creatures')
         .select()
         .eq('child_id', childId)
         .single();
-    return Creature.fromJson(data);
+
+    final creature = Creature.fromJson(data);
+    final now = DateTime.now().toUtc();
+    final elapsedSeconds =
+        now.difference(creature.lastUpdatedAt).inSeconds.toDouble();
+    final depleted = (elapsedSeconds / kSecondsPerDepletionTick).floor();
+
+    if (depleted <= 0) return creature;
+
+    final newFullness = (creature.fullness - depleted).clamp(0, 100);
+    final newHappiness = (creature.happiness - depleted).clamp(0, 100);
+    final newCleanliness = (creature.cleanliness - depleted).clamp(0, 100);
+
+    await _supabase.from('creatures').update({
+      'fullness': newFullness,
+      'happiness': newHappiness,
+      'cleanliness': newCleanliness,
+      'last_updated_at': now.toIso8601String(),
+    }).eq('child_id', childId);
+
+    return creature.copyWith(
+      fullness: newFullness,
+      happiness: newHappiness,
+      cleanliness: newCleanliness,
+      lastUpdatedAt: now,
+    );
   }
 
   /// Decrements the resource by 1 and increments the corresponding creature
   /// stat by [kStatIncrement], both clamped to valid ranges.
   /// Returns the updated [Creature].
   Future<Creature> applyResource(String childId, ResourceType type) async {
-    // Fetch current values
     final resourceData = await _supabase
         .from('resources')
         .select()
@@ -94,10 +122,10 @@ class GameService {
           .from('resources')
           .update({resourceField: currentAmount - 1})
           .eq('child_id', childId),
-      _supabase
-          .from('creatures')
-          .update({statField: newStat})
-          .eq('child_id', childId),
+      _supabase.from('creatures').update({
+        statField: newStat,
+        'last_updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('child_id', childId),
     ]);
 
     return creature.copyWith(
@@ -117,7 +145,22 @@ class GameService {
       'fullness': fullness.clamp(0, 100),
       'happiness': happiness.clamp(0, 100),
       'cleanliness': cleanliness.clamp(0, 100),
+      'last_updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('child_id', childId);
+  }
+
+  Future<void> spendBoxPieces(String childId) async {
+    final data = await _supabase
+        .from('resources')
+        .select('box_pieces')
+        .eq('child_id', childId)
+        .single();
+    final current = (data['box_pieces'] as num? ?? 0).toInt();
+    if (current < kBoxPiecesRequired) return;
+    await _supabase
+        .from('resources')
+        .update({'box_pieces': current - kBoxPiecesRequired})
+        .eq('child_id', childId);
   }
 
   Stream<Resources> streamResources(String childId) {

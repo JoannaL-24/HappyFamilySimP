@@ -36,7 +36,7 @@ class CosmeticService {
   Future<List<RoomPlacement>> fetchPlacements(String childId) async {
     final data = await _supabase
         .from('room_placements')
-        .select('*, cosmetic_items(sprite_index)')
+        .select('*, cosmetic_items(sprite_index, priority_offset)')
         .eq('child_id', childId);
     return (data as List)
         .map((e) => RoomPlacement.fromJson(e as Map<String, dynamic>))
@@ -72,5 +72,12 @@ class CosmeticService {
 
   Future<void> removePlacement(String id) async {
     await _supabase.from('room_placements').delete().eq('id', id);
+  }
+
+  Future<void> grantOwnership(String childId, int itemId) async {
+    await _supabase.from('child_owned_cosmetics').upsert({
+      'child_id': childId,
+      'item_id': itemId,
+    });
   }
 }

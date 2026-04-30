@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flame/components.dart' show Vector2;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,7 +11,7 @@ import 'data/cosmetic_models.dart';
 import 'data/cosmetic_repository.dart';
 import 'data/game_repository.dart';
 import 'data/models.dart';
-import 'game_engine.dart';
+import 'game_engine.dart' show FamilyPetGame, kBoxPiecesRequired;
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
@@ -40,6 +42,7 @@ class _GameScreenState extends State<GameScreen> {
   String? _selectedPlacementId;
 
   ResourceType? _applyingType;
+  bool _isOpeningBox = false;
 
   @override
   void initState() {
@@ -165,6 +168,56 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  Future<void> _openMysteryBox() async {
+    if (_isOpeningBox) return;
+    final resources = _resources;
+    final game = _game;
+    if (resources == null || game == null) return;
+    if (resources.boxPieces < kBoxPiecesRequired) return;
+
+    final childId = Supabase.instance.client.auth.currentUser?.id;
+    if (childId == null) return;
+
+    final unowned = _allItems.where((i) => !_ownedIds.contains(i.id)).toList();
+    if (unowned.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You already own all items!')),
+      );
+      return;
+    }
+
+    final reward = unowned[Random().nextInt(unowned.length)];
+    setState(() => _isOpeningBox = true);
+
+    final sprite = game.sheet.createSprite(reward.spriteIndex).sprite;
+    final spriteSize = game.sheet.spriteSize(reward.spriteIndex);
+
+    if (sprite != null && spriteSize != null) {
+      game.openMysteryBox(
+        sprite,
+        Vector2(spriteSize.width, spriteSize.height),
+        onComplete: () {
+          if (mounted) {
+            setState(() {
+              _ownedIds = {..._ownedIds, reward.id};
+              _isOpeningBox = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('You got: ${reward.name}!')),
+            );
+          }
+        },
+      );
+    } else {
+      setState(() => _isOpeningBox = false);
+    }
+
+    await Future.wait([
+      widget.gameRepository.spendBoxPieces(childId),
+      widget.cosmeticRepository.grantOwnership(childId, reward.id),
+    ]);
+  }
+
   void _toggleEditMode() {
     final newMode = !_editMode;
     setState(() {
@@ -254,6 +307,8 @@ class _GameScreenState extends State<GameScreen> {
             creature: _creature!,
             applyingType: _applyingType,
             onApply: _applyResource,
+            isOpeningBox: _isOpeningBox,
+            onOpenBox: _openMysteryBox,
           ),
           if (_editMode)
             _CosmeticsPanel(
@@ -369,21 +424,26 @@ class _CosmeticsPanelState extends State<_CosmeticsPanel> {
                 ],
               ),
             ),
-            // Item scroll
+            // Item grid
             if (_expanded)
               SizedBox(
-                height: 100,
+                height: 280,
                 child: Builder(builder: (context) {
                   // Owned items first, then locked
                   final sorted = [
                     ...widget.allItems.where((it) => widget.ownedIds.contains(it.id)),
                     ...widget.allItems.where((it) => !widget.ownedIds.contains(it.id)),
                   ];
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    scrollDirection: Axis.horizontal,
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.0,
+                    ),
                     itemCount: sorted.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, i) {
                       final item = sorted[i];
                       final owned = widget.ownedIds.contains(item.id);
@@ -423,12 +483,9 @@ class _CosmeticItemCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 72,
         decoration: BoxDecoration(
-          color: owned
-              ? Colors.amber.shade50
-              : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
+          color: owned ? Colors.amber.shade50 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: owned ? Colors.amber.shade300 : Colors.grey.shade300,
           ),
@@ -436,26 +493,26 @@ class _CosmeticItemCard extends StatelessWidget {
         child: Stack(
           children: [
             Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  height: 48,
-                  child: _SpritePreview(
-                    sheet: sheet,
-                    spriteIndex: item.spriteIndex,
-                    greyed: !owned,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                    child: _SpritePreview(
+                      sheet: sheet,
+                      spriteIndex: item.spriteIndex,
+                      greyed: !owned,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.fromLTRB(3, 2, 3, 3),
                   child: Text(
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 8,
                       color: owned ? Colors.black87 : Colors.grey,
                     ),
                   ),
@@ -464,9 +521,9 @@ class _CosmeticItemCard extends StatelessWidget {
             ),
             if (!owned)
               const Positioned(
-                top: 4,
-                right: 4,
-                child: Icon(Icons.lock, size: 14, color: Colors.grey),
+                top: 2,
+                right: 2,
+                child: Icon(Icons.lock, size: 11, color: Colors.grey),
               ),
           ],
         ),
@@ -548,12 +605,16 @@ class _ResourceBar extends StatelessWidget {
     required this.creature,
     required this.applyingType,
     required this.onApply,
+    required this.isOpeningBox,
+    required this.onOpenBox,
   });
 
   final Resources resources;
   final Creature creature;
   final ResourceType? applyingType;
   final void Function(ResourceType) onApply;
+  final bool isOpeningBox;
+  final VoidCallback onOpenBox;
 
   @override
   Widget build(BuildContext context) {
@@ -562,7 +623,7 @@ class _ResourceBar extends StatelessWidget {
       left: 0,
       right: 0,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -599,6 +660,88 @@ class _ResourceBar extends StatelessWidget {
                   applyingType != null && applyingType != ResourceType.clean,
               onTap: onApply,
             ),
+            _BoxButton(
+              pieces: resources.boxPieces,
+              isOpening: isOpeningBox,
+              disabled: applyingType != null,
+              onTap: onOpenBox,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BoxButton extends StatelessWidget {
+  const _BoxButton({
+    required this.pieces,
+    required this.isOpening,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  final int pieces;
+  final bool isOpening;
+  final bool disabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final canOpen = pieces >= kBoxPiecesRequired && !isOpening && !disabled;
+    return GestureDetector(
+      onTap: canOpen ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: canOpen
+              ? Colors.white.withValues(alpha: 0.85)
+              : Colors.grey.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: canOpen ? Colors.purple.shade300 : Colors.grey.shade400,
+            width: 1.5,
+          ),
+          boxShadow: canOpen
+              ? [
+                  BoxShadow(
+                    color: Colors.purple.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            isOpening
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    '🎁',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: canOpen ? null : Colors.grey,
+                    ),
+                  ),
+            Text(
+              '$pieces/$kBoxPiecesRequired',
+              style: TextStyle(
+                color: canOpen ? Colors.black : Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            if (!canOpen && !isOpening)
+              Text(
+                pieces >= kBoxPiecesRequired ? '' : 'Pieces',
+                style: const TextStyle(fontSize: 9, color: Colors.grey),
+              ),
           ],
         ),
       ),

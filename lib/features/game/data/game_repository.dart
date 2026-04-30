@@ -83,6 +83,16 @@ class GameRepository {
     }
   }
 
+  Future<void> spendBoxPieces(String childId) async {
+    try {
+      await _gameService.spendBoxPieces(childId);
+    } on PostgrestException catch (e) {
+      logger.e('Postgrest error spending box pieces', error: e);
+    } catch (e) {
+      logger.e('Unexpected error spending box pieces', error: e);
+    }
+  }
+
   /// Live stream of resource updates — emits whenever the DB row changes.
   Stream<Resources> watchResources(String childId) {
     return _gameService.streamResources(childId);

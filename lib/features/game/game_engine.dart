@@ -9,11 +9,16 @@ import 'components/furniture_sprite.dart';
 import 'components/pet.dart';
 import 'components/placed_item_component.dart';
 import 'components/ui_bar.dart';
+import 'components/reward_reveal_component.dart';
 import 'components/water_drop_effect.dart' show WaterDropSpawner;
 import 'data/cosmetic_models.dart';
 import 'data/models.dart';
 
+/// Seconds between each 1-point stat depletion. Tune this to change the rate.
+const double kSecondsPerDepletionTick = 10 * 60;
+
 const int kStatIncrement = 10;
+const int kBoxPiecesRequired = 5;
 
 class FamilyPetGame extends FlameGame with KeyboardEvents {
   FamilyPetGame({
@@ -46,6 +51,8 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
   bool _editMode = false;
   String? _selectedPlacementId;
   final Map<String, PlacedItemComponent> _placedComponents = {};
+
+  double _depletionAccum = 0;
 
   @override
   Color backgroundColor() => const Color(0xFFf2e9e1);
@@ -137,6 +144,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
       _selectedPlacementId = null;
       onPlacementSelected?.call(null);
     }
+    _syncPetPositions();
   }
 
   void _addPlacedComponent(RoomPlacement p) {
@@ -148,16 +156,33 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
       priorityOffset: p.priorityOffset,
       placementId: p.id,
       itemId: p.itemId,
+      spriteIndex: p.spriteIndex,
       onMoved: (id, x, y) {
         p.posX = x;
         p.posY = y;
         onPlacementMoved?.call(id, x, y);
+        _syncPetPositions();
       },
       onSelected: _selectPlacement,
     );
     comp.editMode = _editMode;
     _placedComponents[p.id] = comp;
     world.add(comp);
+    _syncPetPositions();
+  }
+
+  void _syncPetPositions() {
+    final beds = <Vector2>[];
+    final toys = <Vector2>[];
+    for (final comp in _placedComponents.values) {
+      if (kBedSpriteIndices.contains(comp.spriteIndex)) {
+        beds.add(Vector2(comp.position.x, comp.position.y + comp.priorityOffset + 2));
+      } else if (kToySpriteIndices.contains(comp.spriteIndex)) {
+        toys.add(comp.position.clone());
+      }
+    }
+    pet.bedPositions = beds;
+    pet.toyPositions = toys;
   }
 
   // ── Stat/mood helpers ─────────────────────────────────────────────────────
@@ -168,16 +193,42 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
     return res.amountFor(type) > 0 && _statFor(type) < 100;
   }
 
+  void openMysteryBox(Sprite rewardSprite, Vector2 rewardSize, {required VoidCallback onComplete}) {
+    pet.playOneShot(PetState.box2);
+    // Spawn reward at the midpoint of the box animation (5 frames × 0.25s)
+    world.add(TimerComponent(
+      period: 1.25,
+      removeOnFinish: true,
+      onTick: () {
+        world.add(RewardRevealComponent(
+          origin: pet.position.clone()..y -= 8,
+          sprite: rewardSprite,
+          spriteSize: rewardSize,
+          onComplete: onComplete,
+        ));
+      },
+    ));
+  }
+
   void triggerResourceAnimation(ResourceType type) {
+    // Update stats and mood before playing animation so a dead/sad pet
+    // can still show the eating/dancing one-shot after being revived.
     switch (type) {
       case ResourceType.food:
-        pet.playOneShot(PetState.eating, loops: 2);
         uiBar.fullness = uiBar.fullness + kStatIncrement;
       case ResourceType.play:
-        pet.playOneShot(PetState.dancing, loops: 3);
         uiBar.happiness = uiBar.happiness + kStatIncrement;
       case ResourceType.clean:
         uiBar.cleanliness = uiBar.cleanliness + kStatIncrement;
+    }
+    _updatePetMood();
+
+    switch (type) {
+      case ResourceType.food:
+        pet.playOneShot(PetState.eating, loops: 2);
+      case ResourceType.play:
+        pet.playOneShot(PetState.dancing, loops: 3);
+      case ResourceType.clean:
         world.add(
           WaterDropSpawner(
             getPosition: () => pet.position.clone()..y -= 12,
@@ -187,7 +238,6 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
           ),
         );
     }
-    _updatePetMood();
   }
 
   void _updatePetMood() {
@@ -209,6 +259,17 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
   @override
   void update(double dt) {
     super.update(dt);
+
+    _depletionAccum += dt;
+    if (_depletionAccum >= kSecondsPerDepletionTick) {
+      _depletionAccum -= kSecondsPerDepletionTick;
+      uiBar.fullness -= 1;
+      uiBar.happiness -= 1;
+      uiBar.cleanliness -= 1;
+      _updatePetMood();
+      onStatsUpdated?.call(uiBar.fullness, uiBar.happiness, uiBar.cleanliness);
+    }
+
     for (final child in world.children) {
       if (child is FurnitureSpriteComponent) {
         child.priority = child.effectivePriority;
@@ -247,6 +308,9 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
         uiBar.cleanliness -= 10;
       } else if (event.logicalKey == LogicalKeyboardKey.digit6) {
         uiBar.cleanliness += 10;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+        pet.debugSpeedMultiplier =
+            pet.debugSpeedMultiplier > 1.0 ? 1.0 : 10.0;
       } else {
         changed = false;
       }
