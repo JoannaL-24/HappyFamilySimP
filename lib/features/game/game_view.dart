@@ -90,15 +90,17 @@ class _GameScreenState extends State<GameScreen> {
             happiness: happiness,
             cleanliness: cleanliness,
           );
-          if (mounted) {
-            setState(() {
-              _creature = _creature?.copyWith(
-                fullness: fullness,
-                happiness: happiness,
-                cleanliness: cleanliness,
-              );
-            });
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _creature = _creature?.copyWith(
+                  fullness: fullness,
+                  happiness: happiness,
+                  cleanliness: cleanliness,
+                );
+              });
+            }
+          });
         },
         onPlacementMoved: (id, x, y) {
           widget.cosmeticRepository.updatePlacement(id, x, y);
@@ -249,6 +251,7 @@ class _GameScreenState extends State<GameScreen> {
       spriteIndex: item.spriteIndex,
       posX: defaultX,
       posY: defaultY,
+      priorityOffset: item.priorityOffset,
     );
 
     setState(() => _placements.add(placement));

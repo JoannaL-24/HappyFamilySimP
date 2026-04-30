@@ -108,7 +108,24 @@ class FurnitureSpriteComponent extends SpriteComponent {
 
   final int priorityOffset;
 
+  static bool debugPriority = false;
+
   /// Effective y for priority sorting (used by game_engine update loop).
   int get effectivePriority => position.y.toInt() + priorityOffset;
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (!debugPriority) return;
+
+    // Draw a line at the priority-offset y (local canvas coords).
+    // Anchor is bottomCenter so bottom edge is at canvas y = size.y.
+    final lineY = size.y + priorityOffset;
+    final paint = Paint()
+      ..color = const Color(0xFFFF00FF)
+      ..strokeWidth = 1.0;
+    canvas.drawLine(Offset(0, lineY), Offset(size.x, lineY), paint);
+    canvas.drawCircle(Offset(size.x / 2, lineY), 2, paint);
+  }
 }
 

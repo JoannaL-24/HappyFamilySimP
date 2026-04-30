@@ -221,7 +221,8 @@ class Pet extends SpriteAnimationGroupComponent<PetState> with TapCallbacks {
     if (_wandering) {
       final dx = _wanderTargetX - position.x;
       final dy = _wanderTargetY - position.y;
-      if (dx.abs() < 2 && dy.abs() < 2) {
+      final arrivalRadius = speed * dt + 2;
+      if (Vector2(dx, dy).length < arrivalRadius) {
         // Arrived — brief pause then pick next behaviour
         position.x = _wanderTargetX;
         position.y = _wanderTargetY;

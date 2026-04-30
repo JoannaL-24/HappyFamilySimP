@@ -53,6 +53,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
   final Map<String, PlacedItemComponent> _placedComponents = {};
 
   double _depletionAccum = 0;
+  bool _debugFastDepletion = false;
 
   @override
   Color backgroundColor() => const Color(0xFFf2e9e1);
@@ -260,9 +261,10 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
   void update(double dt) {
     super.update(dt);
 
+    final depletionTick = _debugFastDepletion ? 1 : kSecondsPerDepletionTick;
     _depletionAccum += dt;
-    if (_depletionAccum >= kSecondsPerDepletionTick) {
-      _depletionAccum -= kSecondsPerDepletionTick;
+    if (_depletionAccum >= depletionTick) {
+      _depletionAccum -= depletionTick;
       uiBar.fullness -= 1;
       uiBar.happiness -= 1;
       uiBar.cleanliness -= 1;
@@ -271,6 +273,7 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
     }
 
     for (final child in world.children) {
+      if (child is Background) continue;
       if (child is FurnitureSpriteComponent) {
         child.priority = child.effectivePriority;
       } else if (child is PositionComponent) {
@@ -311,6 +314,11 @@ class FamilyPetGame extends FlameGame with KeyboardEvents {
       } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
         pet.debugSpeedMultiplier =
             pet.debugSpeedMultiplier > 1.0 ? 1.0 : 10.0;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyG) {
+        _debugFastDepletion = !_debugFastDepletion;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyP) {
+        FurnitureSpriteComponent.debugPriority =
+            !FurnitureSpriteComponent.debugPriority;
       } else {
         changed = false;
       }
