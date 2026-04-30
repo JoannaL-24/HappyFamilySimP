@@ -8,6 +8,7 @@ import 'package:happy_family_sim/core/utils.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
 import 'package:happy_family_sim/features/tasks/data/child/tasks_repository.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
+import 'package:happy_family_sim/features/tasks/util/expiration_reminder.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
@@ -27,6 +28,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   final ChildTaskRepository _taskRepository = ChildTaskRepository();
   bool _isLoading = true;
   List<TaskOccurrence> _tasks = [];
+  final Set<int> _expirationReminderIds = {};
+  Timer? _expirationReminderTimer;
+  int? _visibleExpirationReminderId;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -132,6 +136,15 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   void initState() {
     super.initState();
     _fetchTasks();
+    _expirationReminderTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _showExpirationReminderIfNeeded();
+    });
+  }
+
+  @override
+  void dispose() {
+    _expirationReminderTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _onRefresh() async {
@@ -161,6 +174,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
         setState(() {
           _tasks = updatedResult;
         });
+        _showExpirationReminderIfNeeded();
       }
     } catch (e) {
       Utils.showError(e.toString());
@@ -181,6 +195,74 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
         }
       }
     }
+  }
+
+  void _showExpirationReminderIfNeeded() {
+    if (!mounted) return;
+
+    final expiringTask = ExpirationReminder.firstExpiringTask(
+      _tasks,
+      DateTime.now(),
+      _expirationReminderIds,
+    );
+
+    if (expiringTask == null) {
+      if (_visibleExpirationReminderId != null &&
+          !_tasks.any(
+            (task) =>
+                task.id == _visibleExpirationReminderId &&
+                ExpirationReminder.shouldNotify(task, DateTime.now()),
+          )) {
+        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+        _visibleExpirationReminderId = null;
+      }
+      return;
+    }
+
+    _expirationReminderIds.add(expiringTask.id);
+    _visibleExpirationReminderId = expiringTask.id;
+
+    final title = expiringTask.template?.title ?? 'Task';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentMaterialBanner()
+      ..showMaterialBanner(
+        MaterialBanner(
+          backgroundColor: const Color(0xFFFFF0CC),
+          leading: const Icon(
+            Icons.notifications_active,
+            color: Color(0xFFB06000),
+          ),
+          content: InkWell(
+            onTap: () => _openExpirationReminderTask(expiringTask),
+            child: Text(
+              '$title is due in 1 hour.',
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5A3E36),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                _visibleExpirationReminderId = null;
+              },
+              child: const Text('Dismiss'),
+            ),
+            FilledButton(
+              onPressed: () => _openExpirationReminderTask(expiringTask),
+              child: const Text('View'),
+            ),
+          ],
+        ),
+      );
+  }
+
+  void _openExpirationReminderTask(TaskOccurrence task) {
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    _visibleExpirationReminderId = null;
+    _onTaskTap(task);
   }
 
   Future<void> _markTaskAsDone(int taskId, File? selectedImage) async {
