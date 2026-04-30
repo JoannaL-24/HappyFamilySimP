@@ -15,13 +15,16 @@ import 'package:happy_family_sim/features/management/ui/manage_view.dart';
 import 'package:happy_family_sim/features/analytics/ui/analytics_entry_view.dart';
 import 'package:happy_family_sim/features/analytics/ui/task_report_view.dart';
 import 'package:happy_family_sim/features/analytics/ui/task_statistics_view.dart';
+import 'package:happy_family_sim/features/analytics/ui/task_history_view.dart'
+    as parent_history;
 import 'package:happy_family_sim/features/profile/data/profile_repository.dart';
 import 'package:happy_family_sim/features/profile/ui/parent/profile_view.dart';
 import 'package:happy_family_sim/features/profile/ui/child/profile_view.dart';
 import 'package:happy_family_sim/features/approval/ui/approval_view.dart';
 import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
 import 'package:happy_family_sim/features/tasks/ui/child/tasks_view.dart';
-import 'package:happy_family_sim/features/tasks/ui/child/task_history_view.dart';
+import 'package:happy_family_sim/features/tasks/ui/child/task_history_view.dart'
+    as child_history;
 import 'package:happy_family_sim/features/tasks/ui/parent/tasks_view.dart';
 
 GoRouter createRouter(
@@ -72,6 +75,12 @@ GoRouter createRouter(
               path: 'statistics',
               builder: (context, state) => const TaskStatisticsScreen(),
             ),
+            GoRoute(
+              path: 'history',
+              builder: (context, state) => parent_history.ParentTaskHistoryScreen(
+                authRepository: authRepository,
+              ),
+            )
           ],
         ),
       ],
@@ -111,7 +120,7 @@ GoRouter createRouter(
             GoRoute(
               path: 'history',
               builder: (context, state) =>
-                  TaskHistoryScreen(authRepository: authRepository),
+                  child_history.TaskHistoryScreen(authRepository: authRepository),
             ),
           ],
         ),
