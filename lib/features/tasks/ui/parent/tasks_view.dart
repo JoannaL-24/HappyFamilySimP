@@ -30,6 +30,27 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
 
   bool _isSelectionMode = false;
   Set<int> _selectedTaskIds = {};
+  
+  final List<Map<String, dynamic>> _presetTasks = [
+    {
+      'title': 'Clean Bedroom',
+      'description': 'Pick up toys, vacuum the rug, and make the bed.',
+      'resource': 'clean',
+      'amount': 2,
+    },
+    {
+      'title': 'Brush Teeth',
+      'description': 'Brush for 2 minutes and use mouthwash.',
+      'resource': 'food',
+      'amount': 1,
+    },
+    {
+      'title': 'Do Homework',
+      'description': 'Complete all assignments for tomorrow.',
+      'resource': 'play',
+      'amount': 3,
+    },
+  ];
 
   @override
   void initState() {
@@ -189,6 +210,42 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     });
   }
 
+  void _showPresetPicker(BuildContext context, Function(Map<String, dynamic>) onSelected) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Choose a Preset Task", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _presetTasks.length,
+                itemBuilder: (context, index) {
+                  final preset = _presetTasks[index];
+                  return ListTile(
+                    leading: const Icon(Icons.auto_awesome),
+                    title: Text(preset['title']),
+                    subtitle: Text(preset['description'], maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () {
+                      onSelected(preset);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Edit Logistics: Bottom Sheet ---
   void _showTaskForm({TaskOccurrence? occurrence}) {
     final bool isEditing = occurrence != null;
 
@@ -305,6 +362,28 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (!isEditing) // Only show presets for new tasks
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showPresetPicker(context, (preset) {
+                                setSheetState(() {
+                                  titleController.text = preset['title'];
+                                  descController.text = preset['description'];
+                                  selectedResource = preset['resource'];
+                                  resourceAmount = preset['amount'];
+                                  resourceAmountController.text = preset['amount'].toString();
+                                });
+                              }),
+                              icon: const Icon(Icons.auto_awesome),
+                              label: const Text("Use a Preset Task"),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 45),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          
                         // 1. Task Title
                         TextField(
                           controller: titleController,
