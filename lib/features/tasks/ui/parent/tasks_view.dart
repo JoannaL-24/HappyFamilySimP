@@ -1055,17 +1055,17 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                           segments: [
                             const ButtonSegment(
                               value: 'food',
-                              label: Text('Food'),
+                              label: null,
                               icon: Icon(Icons.fastfood),
                             ),
                             const ButtonSegment(
                               value: 'play',
-                              label: Text('Play'),
+                              label: null,
                               icon: Icon(Icons.sports_esports),
                             ),
                             const ButtonSegment(
                               value: 'clean',
-                              label: Text('Clean'),
+                              label: null,
                               icon: Icon(Icons.cleaning_services),
                             ),
                             ButtonSegment(
