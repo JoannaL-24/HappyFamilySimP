@@ -30,11 +30,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   bool _isLoading = true;
   List<TaskOccurrence> _tasks = [];
   final Set<int> _expirationReminderIds = {};
-  final Set<int> _approvalNotificationIds = {};
+  final Set<int> _reviewNotificationIds = {};
   Timer? _expirationReminderTimer;
-  Timer? _approvalPollTimer;
-  RealtimeChannel? _approvalChannel;
-  bool _isCheckingApprovalStatuses = false;
+  Timer? _reviewPollTimer;
+  RealtimeChannel? _reviewChannel;
+  bool _isCheckingReviewStatuses = false;
   int? _visibleExpirationReminderId;
 
   final ImagePicker _picker = ImagePicker();
@@ -149,8 +149,8 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   @override
   void dispose() {
     _expirationReminderTimer?.cancel();
-    _approvalPollTimer?.cancel();
-    final channel = _approvalChannel;
+    _reviewPollTimer?.cancel();
+    final channel = _reviewChannel;
     if (channel != null) {
       unawaited(Supabase.instance.client.removeChannel(channel));
     }
@@ -171,8 +171,8 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       final userId = widget.authRepository.currentUser?.id;
       if (userId == null) return;
 
-      _startApprovalNotificationSubscription(userId);
-      _startApprovalPolling(userId);
+      _startReviewNotificationSubscription(userId);
+      _startReviewPolling(userId);
 
       final result = await _taskRepository.fetchTasksByChildId(userId);
 
@@ -186,7 +186,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
           .map((task) => task.id)
           .toSet();
       final updatedResult = await _taskRepository.fetchTasksByChildId(userId);
-      await _notifyForApprovedTasksNoLongerActive(
+      await _notifyForReviewedTasksNoLongerActive(
         previousPendingIds: previousPendingIds,
         activeTasks: updatedResult,
         childId: userId,
@@ -281,13 +281,13 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       );
   }
 
-  void _startApprovalNotificationSubscription(String childId) {
-    if (_approvalChannel != null) {
+  void _startReviewNotificationSubscription(String childId) {
+    if (_reviewChannel != null) {
       return;
     }
 
-    _approvalChannel = Supabase.instance.client
-        .channel('approved-tasks-$childId')
+    _reviewChannel = Supabase.instance.client
+        .channel('reviewed-tasks-$childId')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -298,24 +298,24 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             value: childId,
           ),
           callback: (payload) {
-            unawaited(_handleApprovedTaskChange(payload, childId));
+            unawaited(_handleReviewedTaskChange(payload, childId));
           },
         )
         .subscribe();
   }
 
-  void _startApprovalPolling(String childId) {
-    if (_approvalPollTimer != null) {
+  void _startReviewPolling(String childId) {
+    if (_reviewPollTimer != null) {
       return;
     }
 
-    _approvalPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      unawaited(_checkPendingApprovalStatuses(childId));
+    _reviewPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      unawaited(_checkPendingReviewStatuses(childId));
     });
   }
 
-  Future<void> _checkPendingApprovalStatuses(String childId) async {
-    if (_isCheckingApprovalStatuses) {
+  Future<void> _checkPendingReviewStatuses(String childId) async {
+    if (_isCheckingReviewStatuses) {
       return;
     }
 
@@ -328,17 +328,17 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       return;
     }
 
-    _isCheckingApprovalStatuses = true;
+    _isCheckingReviewStatuses = true;
     try {
       for (final taskId in pendingTaskIds) {
-        await _notifyIfTaskWasApproved(occurrenceId: taskId, childId: childId);
+        await _notifyIfTaskWasReviewed(occurrenceId: taskId, childId: childId);
       }
     } finally {
-      _isCheckingApprovalStatuses = false;
+      _isCheckingReviewStatuses = false;
     }
   }
 
-  Future<void> _notifyForApprovedTasksNoLongerActive({
+  Future<void> _notifyForReviewedTasksNoLongerActive({
     required Set<int> previousPendingIds,
     required List<TaskOccurrence> activeTasks,
     required String childId,
@@ -351,77 +351,106 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     final removedPendingIds = previousPendingIds.difference(activeTaskIds);
 
     for (final taskId in removedPendingIds) {
-      await _notifyIfTaskWasApproved(occurrenceId: taskId, childId: childId);
+      await _notifyIfTaskWasReviewed(occurrenceId: taskId, childId: childId);
     }
   }
 
-  Future<void> _handleApprovedTaskChange(
+  Future<void> _handleReviewedTaskChange(
     PostgresChangePayload payload,
     String childId,
   ) async {
     final record = payload.newRecord;
-    if (record['status'] != 'COMP') {
+    final status = record['status'];
+    if (status != 'COMP' && status != 'REJC') {
       return;
     }
 
     final occurrenceId = record['id'];
-    if (occurrenceId is! int ||
-        _approvalNotificationIds.contains(occurrenceId)) {
+    if (occurrenceId is! int || _reviewNotificationIds.contains(occurrenceId)) {
       return;
     }
 
-    await _notifyIfTaskWasApproved(
+    await _notifyIfTaskWasReviewed(
       occurrenceId: occurrenceId,
       childId: childId,
     );
   }
 
-  Future<void> _notifyIfTaskWasApproved({
+  Future<void> _notifyIfTaskWasReviewed({
     required int occurrenceId,
     required String childId,
   }) async {
-    if (_approvalNotificationIds.contains(occurrenceId)) {
+    if (_reviewNotificationIds.contains(occurrenceId)) {
       return;
     }
 
     try {
-      final approvedTask = await _taskRepository.fetchTaskById(
+      final reviewedTask = await _taskRepository.fetchTaskById(
         occurrenceId: occurrenceId,
         childId: childId,
       );
 
-      if (!mounted || approvedTask == null || approvedTask.status != 'COMP') {
+      if (!mounted ||
+          reviewedTask == null ||
+          (reviewedTask.status != 'COMP' && reviewedTask.status != 'REJC')) {
         return;
       }
 
-      _approvalNotificationIds.add(occurrenceId);
+      _reviewNotificationIds.add(occurrenceId);
 
       setState(() {
-        _tasks.removeWhere((task) => task.id == approvedTask.id);
+        _tasks.removeWhere((task) => task.id == reviewedTask.id);
       });
-      _showApprovalNotification(approvedTask);
+      _showReviewNotification(reviewedTask);
     } catch (e) {
-      logger.e('Error showing approval notification: $e');
+      logger.e('Error showing review notification: $e');
     }
   }
 
-  void _showApprovalNotification(TaskOccurrence task) {
+  void _showReviewNotification(TaskOccurrence task) {
     final title = task.template?.title ?? 'Your task';
+    final isRejected = task.status == 'REJC';
+    final feedback = task.feedback?.trim();
+    final hasFeedback = feedback != null && feedback.isNotEmpty;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentMaterialBanner()
       ..showMaterialBanner(
         MaterialBanner(
-          backgroundColor: const Color(0xFFEAF8EA),
-          leading: const Icon(Icons.verified, color: Colors.green),
+          backgroundColor: isRejected
+              ? const Color(0xFFFFEAEA)
+              : const Color(0xFFEAF8EA),
+          leading: Icon(
+            isRejected ? Icons.cancel : Icons.verified,
+            color: isRejected ? Colors.red : Colors.green,
+          ),
           content: InkWell(
-            onTap: () => _openApprovedTask(task),
-            child: Text(
-              '$title was approved!',
-              style: GoogleFonts.quicksand(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF245B2A),
-              ),
+            onTap: () => _openReviewedTask(task),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isRejected ? '$title was rejected.' : '$title was approved!',
+                  style: GoogleFonts.quicksand(
+                    fontWeight: FontWeight.bold,
+                    color: isRejected
+                        ? const Color(0xFF7A1E1E)
+                        : const Color(0xFF245B2A),
+                  ),
+                ),
+                if (isRejected && hasFeedback) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    feedback,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.quicksand(
+                      color: const Color(0xFF7A1E1E),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           actions: [
@@ -431,7 +460,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               child: const Text('Dismiss'),
             ),
             FilledButton(
-              onPressed: () => _openApprovedTask(task),
+              onPressed: () => _openReviewedTask(task),
               child: const Text('View'),
             ),
           ],
@@ -439,7 +468,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       );
   }
 
-  void _openApprovedTask(TaskOccurrence task) {
+  void _openReviewedTask(TaskOccurrence task) {
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
     _onTaskTap(task);
   }
@@ -721,6 +750,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     final template = task.template!;
     final isPending = task.status == 'PEND';
     final isCompleted = task.status == 'COMP';
+    final isRejected = task.status == 'REJC';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -768,20 +798,22 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 ),
               ],
             ),
-            if (isCompleted && task.approvalDate != null) ...[
+            if ((isCompleted || isRejected) && task.approvalDate != null) ...[
               const SizedBox(height: 6),
               Row(
                 children: [
                   Icon(
-                    Icons.check_circle_outline,
+                    isRejected
+                        ? Icons.cancel_outlined
+                        : Icons.check_circle_outline,
                     size: 16,
-                    color: Colors.green[700],
+                    color: isRejected ? Colors.red[700] : Colors.green[700],
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Approved: ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
+                    '${isRejected ? 'Rejected' : 'Approved'}: ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
                     style: GoogleFonts.quicksand(
-                      color: Colors.green[700],
+                      color: isRejected ? Colors.red[700] : Colors.green[700],
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -805,7 +837,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             const SizedBox(height: 24),
 
             // photo Proof
-            if ((isPending || isCompleted) &&
+            if ((isPending || isCompleted || isRejected) &&
                 task.proofUrl != null &&
                 task.proofUrl!.isNotEmpty) ...[
               Text(
@@ -842,7 +874,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             ],
 
             // a badge to show if proof is needed
-            if (template.proofRequired && !isPending && !isCompleted)
+            if (template.proofRequired &&
+                !isPending &&
+                !isCompleted &&
+                !isRejected)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
                 padding: const EdgeInsets.symmetric(
@@ -871,42 +906,74 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 ),
               ),
 
-            // Rewards Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.amber.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.orange),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your Reward:',
-                          style: GoogleFonts.quicksand(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                        Text(
-                          '${template.resourceAmount} ${template.resource} points!',
-                          style: GoogleFonts.quicksand(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+            if (isRejected &&
+                task.feedback != null &&
+                task.feedback!.trim().isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.shade100),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Parent Feedback:',
+                      style: GoogleFonts.quicksand(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[800],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      task.feedback!.trim(),
+                      style: GoogleFonts.quicksand(fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 24),
+            ],
+
+            // Rewards Section
+            if (!isRejected)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.stars, color: Colors.orange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Reward:',
+                            style: GoogleFonts.quicksand(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                          Text(
+                            '${template.resourceAmount} ${template.resource} points!',
+                            style: GoogleFonts.quicksand(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 32),
             // Action Button
             if (task.status == 'NOTD')
@@ -962,6 +1029,22 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.quicksand(
                     color: Colors.green[800],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else if (isRejected)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Task rejected. Check the feedback and try again next time.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.quicksand(
+                    color: Colors.red[800],
                     fontWeight: FontWeight.bold,
                   ),
                 ),
