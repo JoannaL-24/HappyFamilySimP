@@ -12,6 +12,7 @@ import 'package:happy_family_sim/features/tasks/util/expiration_reminder.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 var logger = Logger();
 
@@ -29,7 +30,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   bool _isLoading = true;
   List<TaskOccurrence> _tasks = [];
   final Set<int> _expirationReminderIds = {};
+  final Set<int> _approvalNotificationIds = {};
   Timer? _expirationReminderTimer;
+  Timer? _approvalPollTimer;
+  RealtimeChannel? _approvalChannel;
+  bool _isCheckingApprovalStatuses = false;
   int? _visibleExpirationReminderId;
 
   final ImagePicker _picker = ImagePicker();
@@ -144,6 +149,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   @override
   void dispose() {
     _expirationReminderTimer?.cancel();
+    _approvalPollTimer?.cancel();
+    final channel = _approvalChannel;
+    if (channel != null) {
+      unawaited(Supabase.instance.client.removeChannel(channel));
+    }
     super.dispose();
   }
 
@@ -161,6 +171,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       final userId = widget.authRepository.currentUser?.id;
       if (userId == null) return;
 
+      _startApprovalNotificationSubscription(userId);
+      _startApprovalPolling(userId);
+
       final result = await _taskRepository.fetchTasksByChildId(userId);
 
       // NOTE: Supabase Cron job has implemented to mark missed tasks, but
@@ -168,7 +181,16 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
       // is open for a long time without refreshing
       await _handleMissedTasks(result);
 
+      final previousPendingIds = _tasks
+          .where((task) => task.status == 'PEND')
+          .map((task) => task.id)
+          .toSet();
       final updatedResult = await _taskRepository.fetchTasksByChildId(userId);
+      await _notifyForApprovedTasksNoLongerActive(
+        previousPendingIds: previousPendingIds,
+        activeTasks: updatedResult,
+        childId: userId,
+      );
 
       if (mounted) {
         setState(() {
@@ -257,6 +279,169 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
           ],
         ),
       );
+  }
+
+  void _startApprovalNotificationSubscription(String childId) {
+    if (_approvalChannel != null) {
+      return;
+    }
+
+    _approvalChannel = Supabase.instance.client
+        .channel('approved-tasks-$childId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'task_occurrence',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
+          callback: (payload) {
+            unawaited(_handleApprovedTaskChange(payload, childId));
+          },
+        )
+        .subscribe();
+  }
+
+  void _startApprovalPolling(String childId) {
+    if (_approvalPollTimer != null) {
+      return;
+    }
+
+    _approvalPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      unawaited(_checkPendingApprovalStatuses(childId));
+    });
+  }
+
+  Future<void> _checkPendingApprovalStatuses(String childId) async {
+    if (_isCheckingApprovalStatuses) {
+      return;
+    }
+
+    final pendingTaskIds = _tasks
+        .where((task) => task.status == 'PEND')
+        .map((task) => task.id)
+        .toList();
+
+    if (pendingTaskIds.isEmpty) {
+      return;
+    }
+
+    _isCheckingApprovalStatuses = true;
+    try {
+      for (final taskId in pendingTaskIds) {
+        await _notifyIfTaskWasApproved(occurrenceId: taskId, childId: childId);
+      }
+    } finally {
+      _isCheckingApprovalStatuses = false;
+    }
+  }
+
+  Future<void> _notifyForApprovedTasksNoLongerActive({
+    required Set<int> previousPendingIds,
+    required List<TaskOccurrence> activeTasks,
+    required String childId,
+  }) async {
+    if (previousPendingIds.isEmpty) {
+      return;
+    }
+
+    final activeTaskIds = activeTasks.map((task) => task.id).toSet();
+    final removedPendingIds = previousPendingIds.difference(activeTaskIds);
+
+    for (final taskId in removedPendingIds) {
+      await _notifyIfTaskWasApproved(occurrenceId: taskId, childId: childId);
+    }
+  }
+
+  Future<void> _handleApprovedTaskChange(
+    PostgresChangePayload payload,
+    String childId,
+  ) async {
+    final record = payload.newRecord;
+    if (record['status'] != 'COMP') {
+      return;
+    }
+
+    final occurrenceId = record['id'];
+    if (occurrenceId is! int ||
+        _approvalNotificationIds.contains(occurrenceId)) {
+      return;
+    }
+
+    await _notifyIfTaskWasApproved(
+      occurrenceId: occurrenceId,
+      childId: childId,
+    );
+  }
+
+  Future<void> _notifyIfTaskWasApproved({
+    required int occurrenceId,
+    required String childId,
+  }) async {
+    if (_approvalNotificationIds.contains(occurrenceId)) {
+      return;
+    }
+
+    try {
+      final approvedTask = await _taskRepository.fetchTaskById(
+        occurrenceId: occurrenceId,
+        childId: childId,
+      );
+
+      if (!mounted || approvedTask == null || approvedTask.status != 'COMP') {
+        return;
+      }
+
+      _approvalNotificationIds.add(occurrenceId);
+
+      setState(() {
+        _tasks.removeWhere((task) => task.id == approvedTask.id);
+      });
+      _showApprovalNotification(approvedTask);
+    } catch (e) {
+      logger.e('Error showing approval notification: $e');
+    }
+  }
+
+  void _showApprovalNotification(TaskOccurrence task) {
+    final title = task.template?.title ?? 'Your task';
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentMaterialBanner()
+      ..showMaterialBanner(
+        MaterialBanner(
+          backgroundColor: const Color(0xFFEAF8EA),
+          leading: const Icon(Icons.verified, color: Colors.green),
+          content: InkWell(
+            onTap: () => _openApprovedTask(task),
+            child: Text(
+              '$title was approved!',
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF245B2A),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+              child: const Text('Dismiss'),
+            ),
+            FilledButton(
+              onPressed: () => _openApprovedTask(task),
+              child: const Text('View'),
+            ),
+          ],
+        ),
+      );
+  }
+
+  void _openApprovedTask(TaskOccurrence task) {
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    _onTaskTap(task);
   }
 
   void _openExpirationReminderTask(TaskOccurrence task) {
@@ -535,6 +720,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   Widget _buildTaskDetailSheet(TaskOccurrence task) {
     final template = task.template!;
     final isPending = task.status == 'PEND';
+    final isCompleted = task.status == 'COMP';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -582,6 +768,26 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 ),
               ],
             ),
+            if (isCompleted && task.approvalDate != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: Colors.green[700],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Approved: ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
+                    style: GoogleFonts.quicksand(
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             // Description Box
             Text(
@@ -599,7 +805,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             const SizedBox(height: 24),
 
             // photo Proof
-            if (isPending &&
+            if ((isPending || isCompleted) &&
                 task.proofUrl != null &&
                 task.proofUrl!.isNotEmpty) ...[
               Text(
@@ -636,7 +842,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             ],
 
             // a badge to show if proof is needed
-            if (template.proofRequired && !isPending)
+            if (template.proofRequired && !isPending && !isCompleted)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
                 padding: const EdgeInsets.symmetric(
@@ -703,7 +909,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
             ),
             const SizedBox(height: 32),
             // Action Button
-            if (!isPending)
+            if (task.status == 'NOTD')
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
@@ -728,7 +934,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   ),
                 ),
               )
-            else
+            else if (isPending)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -737,6 +943,22 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                 ),
                 child: Text(
                   'Task already finished! Waiting for approval.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.quicksand(
+                    color: Colors.green[800],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else if (isCompleted)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Task approved! Your reward has been added.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.quicksand(
                     color: Colors.green[800],

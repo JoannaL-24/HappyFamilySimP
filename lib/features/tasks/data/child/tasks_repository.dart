@@ -50,6 +50,31 @@ class ChildTaskRepository {
     }
   }
 
+  Future<TaskOccurrence?> fetchTaskById({
+    required int occurrenceId,
+    required String childId,
+  }) async {
+    try {
+      final response = await _supabase
+          .from('task_occurrence')
+          .select('''*,
+            task_template!inner(*)
+          ''')
+          .eq('id', occurrenceId)
+          .eq('child_id', childId)
+          .maybeSingle();
+
+      if (response == null) {
+        return null;
+      }
+
+      return TaskOccurrence.fromJson(response);
+    } catch (e) {
+      logger.e('Error fetching task by id: $e');
+      throw Exception('Failed to fetch task details.');
+    }
+  }
+
   // Update a task status (e.g., mark as NOTD, PEND, MISS, REJC, COMP)
   Future<void> updateTaskStatus(int occurrenceId, String status) async {
     try {
@@ -71,7 +96,7 @@ class ChildTaskRepository {
 
   Future<void> markTaskAsDone(
     int occurrenceId,
-    String status, 
+    String status,
     File? selectedImage,
   ) async {
     try {
