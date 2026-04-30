@@ -137,6 +137,39 @@ class TaskRepository {
   }
 
   // Fetch occurrences for analytics within a date range
+  Future<List<TaskOccurrence>> fetchParentTaskHistory(String parentId) async {
+    if (parentId.isEmpty) {
+      return [];
+    }
+
+    final response = await _supabase
+        .from('task_occurrence')
+        .select('''
+          *,
+          child:profiles!inner(id, name, avatar_path),
+          task_template!inner(
+            *,
+            task_recurrence(*)
+          )
+        ''')
+        .eq('task_template.parent_id', parentId)
+        .inFilter('status', ['COMP', 'MISS', 'REJC'])
+        .order('due_date', ascending: false);
+
+    return (response as List).map((json) {
+      final childData = json['child'] as Map<String, dynamic>?;
+      final String path = childData?['avatar_path'] ?? Constants.defaultAvatarPath;
+
+      String publicUrl = '';
+      if (path.isNotEmpty) {
+        publicUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+      }
+
+      return TaskOccurrence.fromJson(json, publicUrl);
+    }).toList();
+  }
+
+  // Fetch occurrences for analytics within a date range
   Future<List<TaskOccurrence>> fetchAnalyticsData({
     required String parentId,
     String? childId,
