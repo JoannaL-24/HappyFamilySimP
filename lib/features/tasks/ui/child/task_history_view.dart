@@ -6,6 +6,20 @@ import 'package:happy_family_sim/features/tasks/data/child/tasks_repository.dart
 import 'package:intl/intl.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 
+const _questBackground = Color(0xFFFFF6E8);
+const _questPanel = Color(0xFFFFFBF2);
+const _questBrown = Color(0xFF5A3E36);
+const _questText = Color(0xFF3E2D28);
+const _questMuted = Color(0xFF6E5A50);
+const _questSuccess = Color(0xFF58A96B);
+const _questMissed = Color(0xFF8A7A70);
+const _questDanger = Color(0xFFD05A4E);
+const _questPhoto = Color(0xFF4F83CC);
+const _questFood = Color(0xFFE8873D);
+const _questPlay = Color(0xFF4F83CC);
+const _questClean = Color(0xFF48A06D);
+const _questMagic = Color(0xFFB274C8);
+
 class TaskHistoryScreen extends StatefulWidget {
   final AuthRepository authRepository;
   const TaskHistoryScreen({super.key, required this.authRepository});
@@ -137,9 +151,9 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                primary: Color(0xFF5A3E36),
+                primary: _questBrown,
                 onPrimary: Colors.white,
-                onSurface: Color(0xFF5A3E36),
+                onSurface: _questBrown,
               ),
             ),
             child: child!,
@@ -176,12 +190,17 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _questBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
           ),
           title: Text(
             'Select Month (${_selectedDate.year})',
-            style: GoogleFonts.quicksand(fontWeight: FontWeight.bold),
+            style: GoogleFonts.pixelifySans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _questBrown,
+            ),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -210,19 +229,20 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF5A3E36).withAlpha(40)
+                          ? _questBrown.withAlpha(40)
                           : null,
                       borderRadius: BorderRadius.circular(8),
+                      border: isSelected
+                          ? Border.all(color: _questBrown, width: 2)
+                          : null,
                     ),
                     child: Text(
                       months[index].substring(0, 3),
                       style: GoogleFonts.quicksand(
-                        color: isSelected
-                            ? const Color(0xFF5A3E36)
-                            : Colors.black87,
+                        color: isSelected ? _questBrown : _questText,
                         fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                            ? FontWeight.w900
+                            : FontWeight.w700,
                       ),
                     ),
                   ),
@@ -243,12 +263,17 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _questBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
           ),
           title: Text(
             'Select Year',
-            style: GoogleFonts.quicksand(fontWeight: FontWeight.bold),
+            style: GoogleFonts.pixelifySans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _questBrown,
+            ),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -266,11 +291,9 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     year.toString(),
                     style: GoogleFonts.quicksand(
                       fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? const Color(0xFF5A3E36)
-                          : Colors.black87,
+                          ? FontWeight.w900
+                          : FontWeight.w700,
+                      color: isSelected ? _questBrown : _questText,
                     ),
                   ),
                   onTap: () {
@@ -284,7 +307,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     Navigator.pop(context);
                   },
                   selected: isSelected,
-                  selectedTileColor: const Color(0xFF5A3E36).withAlpha(20),
+                  selectedTileColor: _questBrown.withAlpha(20),
                 );
               },
             ),
@@ -297,103 +320,112 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF6E8),
+      backgroundColor: _questBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xffebdfcc),
+        backgroundColor: _questBackground,
+        foregroundColor: _questBrown,
+        elevation: 0,
         title: Text(
-          'Task History',
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF5A3E36),
+          'Quest History',
+          style: GoogleFonts.pixelifySans(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: _questBrown,
           ),
         ),
         centerTitle: true,
-        elevation: 1,
       ),
-      body: Column(
-        children: [
-          _buildPeriodSelector(),
-          _buildStatusFilter(),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredTasks.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filteredTasks.length,
-                      itemBuilder: (context, index) =>
-                          _buildHistoryCard(_filteredTasks[index]),
-                    ),
-            ),
+      body: SafeArea(
+        top: false,
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildPeriodSelector(),
+                      const SizedBox(height: 14),
+                      _buildStatusFilter(),
+                    ],
+                  ),
+                ),
+              ),
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_filteredTasks.isEmpty)
+                SliverFillRemaining(child: _buildQuestEmptyState())
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  sliver: SliverList.builder(
+                    itemCount: _filteredTasks.length,
+                    itemBuilder: (context, index) =>
+                        _buildQuestHistoryCard(_filteredTasks[index]),
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildPeriodSelector() {
-    String dateText;
+    final dateText = _periodDateText();
 
-    if (_periodFilter == 'Day') {
-      dateText = DateFormat('MMMM d, yyyy').format(_selectedDate);
-    } else if (_periodFilter == 'Month') {
-      dateText = DateFormat('MMMM yyyy').format(_selectedDate);
-    } else {
-      dateText = DateFormat('yyyy').format(_selectedDate);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      color: Colors.white.withAlpha(128),
+    return _PixelPanel(
+      padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['Day', 'Month', 'Year'].map((p) {
-              bool isSelected = _periodFilter == p;
-              return ChoiceChip(
-                label: Text(
-                  p,
-                  style: GoogleFonts.quicksand(fontWeight: FontWeight.w600),
-                ),
-                selected: isSelected,
-                onSelected: (val) {
-                  if (val) setState(() => _periodFilter = p);
-                },
-                selectedColor: const Color(0xFF5A3E36).withAlpha(40),
-                checkmarkColor: const Color(0xFF5A3E36),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: ['Day', 'Month', 'Year'].map((period) {
+              return _FilterPill(
+                label: period,
+                isSelected: _periodFilter == period,
+                color: _questBrown,
+                onTap: () => setState(() => _periodFilter = period),
               );
             }).toList(),
           ),
+          const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
+              _PixelIconButton(
+                tooltip: 'Previous $_periodFilter',
+                icon: Icons.chevron_left,
                 onPressed: () => _changeDate(-1),
               ),
-              InkWell(
-                onTap: () => _selectDate(context),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  child: Text(
-                    dateText,
-                    style: GoogleFonts.quicksand(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectDate(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Text(
+                      dateText,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.pixelifySans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                        color: _questBrown,
+                      ),
                     ),
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
+              _PixelIconButton(
+                tooltip: 'Next $_periodFilter',
+                icon: Icons.chevron_right,
                 onPressed: () => _changeDate(1),
               ),
             ],
@@ -406,21 +438,23 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   Widget _buildStatusFilter() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: ['All', 'Completed', 'Missed', 'Rejected'].map((status) {
-          bool isSelected = _statusFilter == status;
+          final isSelected = _statusFilter == status;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(status, style: GoogleFonts.quicksand(fontSize: 12)),
-              selected: isSelected,
-              onSelected: (val) {
-                if (val) setState(() => _statusFilter = status);
-              },
-              backgroundColor: Colors.white,
-              selectedColor: _getStatusColor(status).withAlpha(40),
-              checkmarkColor: _getStatusColor(status),
+            child: _FilterPill(
+              label: status,
+              icon: status == 'All' ? Icons.auto_awesome : _getStatusIcon(
+                status == 'Completed'
+                    ? 'COMP'
+                    : status == 'Missed'
+                        ? 'MISS'
+                        : 'REJC',
+              ),
+              isSelected: isSelected,
+              color: _getStatusColor(status),
+              onTap: () => setState(() => _statusFilter = status),
             ),
           );
         }).toList(),
@@ -428,29 +462,39 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
     );
   }
 
+  String _periodDateText() {
+    if (_periodFilter == 'Day') {
+      return DateFormat('MMM d, yyyy').format(_selectedDate);
+    }
+    if (_periodFilter == 'Month') {
+      return DateFormat('MMMM yyyy').format(_selectedDate);
+    }
+    return DateFormat('yyyy').format(_selectedDate);
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Completed':
-        return Colors.green;
+        return _questSuccess;
       case 'Missed':
-        return Colors.grey;
+        return _questMissed;
       case 'Rejected':
-        return Colors.red;
+        return _questDanger;
       default:
-        return const Color(0xFF5A3E36);
+        return _questBrown;
     }
   }
 
   Color _getTaskStatusColor(String status) {
     switch (status) {
       case 'COMP':
-        return Colors.green;
+        return _questSuccess;
       case 'MISS':
-        return Colors.grey;
+        return _questMissed;
       case 'REJC':
-        return Colors.red;
+        return _questDanger;
       default:
-        return Colors.blue;
+        return _questPhoto;
     }
   }
 
@@ -464,6 +508,430 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
         return 'Rejected';
       default:
         return 'Unknown';
+    }
+  }
+
+  Widget _buildQuestHistoryCard(TaskOccurrence task) {
+    final statusColor = _getTaskStatusColor(task.status);
+    final statusLabel = _getStatusLabel(task.status);
+    final template = task.template;
+    final resourceColor = _resourceColor(template?.resource ?? '');
+    final useApprovalDate =
+        (task.status == 'COMP' || task.status == 'REJC') &&
+        task.approvalDate != null;
+    final displayDate = useApprovalDate ? task.approvalDate! : task.dueDate;
+    final dateLabel = useApprovalDate
+        ? (task.status == 'REJC' ? 'Rejected' : 'Completed')
+        : (task.status == 'MISS' ? 'Missed' : 'Due');
+
+    return Opacity(
+      opacity: task.status == 'MISS' ? 0.74 : 1,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showQuestTaskDetails(task),
+            child: _PixelPanel(
+              padding: EdgeInsets.zero,
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(6),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 64,
+                      decoration: BoxDecoration(
+                        color: statusColor.withAlpha(26),
+                        border: Border(
+                          right: BorderSide(
+                            color: _questBrown.withAlpha(80),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          _getStatusIcon(task.status),
+                          color: statusColor,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              template?.title ?? 'Unknown Quest',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.quicksand(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: _questText,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$dateLabel ${DateFormat('MMM d, h:mm a').format(displayDate)}',
+                              style: GoogleFonts.quicksand(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _questMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _MiniChip(
+                                  icon: _getStatusIcon(task.status),
+                                  label: statusLabel,
+                                  color: statusColor,
+                                ),
+                                if (template != null)
+                                  _MiniChip(
+                                    icon: _resourceIcon(template.resource),
+                                    label:
+                                        '${template.resourceAmount} ${template.resource}',
+                                    color: resourceColor,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: _questBrown.withAlpha(120)),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQuestTaskDetails(TaskOccurrence task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _questBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (context) => _buildQuestTaskDetailSheet(task),
+    );
+  }
+
+  Widget _buildQuestTaskDetailSheet(TaskOccurrence task) {
+    final statusColor = _getTaskStatusColor(task.status);
+    final statusLabel = _getStatusLabel(task.status);
+    final template = task.template;
+    final resourceColor = _resourceColor(template?.resource ?? '');
+    const titleColor = _questBrown;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.68,
+      maxChildSize: 0.92,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (context, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: titleColor.withAlpha(90),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Quest Log',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.pixelifySans(
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              template?.title ?? 'Quest Details',
+              style: GoogleFonts.quicksand(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MiniChip(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Due ${DateFormat('MMM d, h:mm a').format(task.dueDate)}',
+                  color: _questMuted,
+                ),
+                _MiniChip(
+                  icon: _getStatusIcon(task.status),
+                  label: statusLabel,
+                  color: statusColor,
+                ),
+                if (task.approvalDate != null &&
+                    (task.status == 'COMP' || task.status == 'REJC'))
+                  _MiniChip(
+                    icon: task.status == 'REJC'
+                        ? Icons.cancel_outlined
+                        : Icons.check_circle_outline,
+                    label:
+                        '${task.status == 'REJC' ? 'Rejected' : 'Completed'} ${DateFormat('MMM d, h:mm a').format(task.approvalDate!)}',
+                    color: statusColor,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _PixelPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _PanelTitle(
+                    icon: Icons.flag_rounded,
+                    label: 'What it was',
+                    color: titleColor,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    template?.description.trim().isNotEmpty == true
+                        ? template!.description
+                        : 'No description provided.',
+                    style: GoogleFonts.quicksand(
+                      fontSize: 16,
+                      height: 1.3,
+                      color: _questText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _PixelPanel(
+              padding: const EdgeInsets.all(12),
+              child: _PanelTitle(
+                icon: _getStatusIcon(task.status),
+                label: _statusMessage(task.status),
+                color: statusColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (task.proofUrl != null && task.proofUrl!.isNotEmpty) ...[
+              _PixelPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _PanelTitle(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Photo Proof',
+                      color: _questPhoto,
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _showZoomableImage(context, task.proofUrl!),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          task.proofUrl!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Tap photo to zoom',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _questMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (task.feedback != null && task.feedback!.trim().isNotEmpty) ...[
+              _PixelPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _PanelTitle(
+                      icon: Icons.feedback_rounded,
+                      label: 'Parent Feedback',
+                      color: _questDanger,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      task.feedback!.trim(),
+                      style: GoogleFonts.quicksand(
+                        fontSize: 16,
+                        height: 1.3,
+                        color: _questText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (template != null)
+              _PixelPanel(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: resourceColor.withAlpha(32),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: resourceColor, width: 2),
+                      ),
+                      child: Icon(
+                        _resourceIcon(template.resource),
+                        color: resourceColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Reward: ${template.resourceAmount} ${template.resource}',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: resourceColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 18),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Close',
+                style: GoogleFonts.quicksand(
+                  fontWeight: FontWeight.w900,
+                  color: titleColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: _PixelPanel(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.history_edu,
+                size: 64,
+                color: _questBrown.withAlpha(120),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No quest logs found.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  color: _questBrown,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Try changing the filters or date.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.quicksand(
+                  fontWeight: FontWeight.w700,
+                  color: _questMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _statusMessage(String status) {
+    switch (status) {
+      case 'COMP':
+        return 'Quest complete. Nice work!';
+      case 'MISS':
+        return 'Quest missed. Try the next one!';
+      case 'REJC':
+        return 'Quest rejected. Check the feedback.';
+      default:
+        return 'Quest recorded.';
+    }
+  }
+
+  IconData _resourceIcon(String resource) {
+    switch (resource.toLowerCase()) {
+      case 'food':
+        return Icons.restaurant_rounded;
+      case 'play':
+        return Icons.sports_esports_rounded;
+      case 'clean':
+        return Icons.cleaning_services_rounded;
+      default:
+        return Icons.stars_rounded;
+    }
+  }
+
+  Color _resourceColor(String resource) {
+    switch (resource.toLowerCase()) {
+      case 'food':
+        return _questFood;
+      case 'play':
+        return _questPlay;
+      case 'clean':
+        return _questClean;
+      default:
+        return _questMagic;
     }
   }
 
@@ -800,6 +1268,208 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                 style: GoogleFonts.quicksand(color: Colors.grey[500]),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PixelPanel extends StatelessWidget {
+  const _PixelPanel({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: _questPanel,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _questBrown, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: _questBrown,
+            offset: Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PixelIconButton extends StatelessWidget {
+  const _PixelIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onPressed,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0C2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _questBrown, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: _questBrown,
+                offset: Offset(2, 2),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Icon(icon, color: _questBrown),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withAlpha(42) : _questPanel,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? color : _questBrown.withAlpha(90),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.quicksand(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: isSelected ? color : _questBrown,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.of(context).size.width - 72;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: maxWidth.clamp(120.0, 420.0).toDouble(),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withAlpha(90)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.quicksand(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelTitle extends StatelessWidget {
+  const _PanelTitle({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.quicksand(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
           ),
         ),
       ],
