@@ -8,7 +8,7 @@ class CustomRecurrencePage extends StatefulWidget {
 }
 
 class _CustomRecurrencePageState extends State<CustomRecurrencePage> {
-  String _pattern = 'daily'; // daily, weekly, monthly
+  String _pattern = 'Daily'; // Daily, Weekly, Monthly
   int _interval = 1;
   List<int> _selectedDays = []; // Weekdays (1-7) or Month days (1-31)
 
@@ -23,9 +23,9 @@ class _CustomRecurrencePageState extends State<CustomRecurrencePage> {
           const SizedBox(height: 10),
           SegmentedButton<String>(
             segments: const [
-              ButtonSegment(value: 'daily', label: Text('Daily')),
-              ButtonSegment(value: 'weekly', label: Text('Weekly')),
-              ButtonSegment(value: 'monthly', label: Text('Monthly')),
+              ButtonSegment(value: 'Daily', label: Text('Daily')),
+              ButtonSegment(value: 'Weekly', label: Text('Weekly')),
+              ButtonSegment(value: 'Monthly', label: Text('Monthly')),
             ],
             selected: {_pattern},
             onSelectionChanged: (val) => setState(() {
@@ -36,7 +36,7 @@ class _CustomRecurrencePageState extends State<CustomRecurrencePage> {
           const SizedBox(height: 20),
           
           ListTile(
-            title: Text("Every $_interval ${_pattern == 'daily' ? 'day' : _pattern == 'weekly' ? 'week' : 'month'}(s)"),
+            title: Text("Every $_interval ${_pattern == 'Daily' ? 'day' : _pattern == 'Weekly' ? 'week' : _pattern == 'Monthly' ? 'month' : ''}(s)"),
             trailing: SizedBox(
               width: 60,
               child: TextFormField(
@@ -49,13 +49,13 @@ class _CustomRecurrencePageState extends State<CustomRecurrencePage> {
           ),
           const Divider(),
 
-          if (_pattern == 'weekly') ...[
+          if (_pattern == 'Weekly') ...[
             const Text("On these weekdays:"),
             const SizedBox(height: 10),
             _buildWeeklyPicker(),
           ],
 
-          if (_pattern == 'monthly') ...[
+          if (_pattern == 'Monthly') ...[
             const Text("On these dates:"),
             const SizedBox(height: 10),
             _buildMonthlyPicker(),
