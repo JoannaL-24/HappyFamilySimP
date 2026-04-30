@@ -13,6 +13,7 @@ class TaskTemplate {
 
   final String resource; // 'food','play', 'clean'
   final int resourceAmount;
+  final int? categoryId;
 
   TaskTemplate({
     required this.id,
@@ -25,6 +26,7 @@ class TaskTemplate {
     this.recurrence,
     required this.resource,
     required this.resourceAmount,
+    this.categoryId,
   });
 
   // fetching supporting method
@@ -44,33 +46,41 @@ class TaskTemplate {
           : null,
       resource: json['resource'] ?? 'food',
       resourceAmount: json['resource_amount'] ?? 1,
+      categoryId: json['category_id'] == null
+          ? null
+          : (json['category_id'] is int
+              ? json['category_id'] as int
+              : int.parse(json['category_id'].toString())),
     );
   }
 
-TaskTemplate copyWith({
-  String? title,
-  String? description,
-  bool? proofRequired,
-  int? recurrenceId,
-  DateTime? endDate,
-  String? targetTime,
-  TaskRecurrence? recurrence,
-  String? resource,
-  int? resourceAmount,
-}) {
-  return TaskTemplate(
-    id: id,
-    title: title ?? this.title,
-    description: description ?? this.description,
-    proofRequired: proofRequired ?? this.proofRequired,
-    recurrenceId: recurrenceId ?? this.recurrenceId,
-    endDate: endDate ?? this.endDate,
-    targetTime: targetTime ?? this.targetTime,
-    recurrence: recurrence ?? this.recurrence,
-    resource: resource ?? this.resource,
-    resourceAmount: resourceAmount ?? this.resourceAmount,
-  );
-}
+  TaskTemplate copyWith({
+    String? title,
+    String? description,
+    bool? proofRequired,
+    int? recurrenceId,
+    DateTime? endDate,
+    String? targetTime,
+    TaskRecurrence? recurrence,
+    String? resource,
+    int? resourceAmount,
+    int? categoryId,
+    bool clearCategory = false,
+  }) {
+    return TaskTemplate(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      proofRequired: proofRequired ?? this.proofRequired,
+      recurrenceId: recurrenceId ?? this.recurrenceId,
+      endDate: endDate ?? this.endDate,
+      targetTime: targetTime ?? this.targetTime,
+      recurrence: recurrence ?? this.recurrence,
+      resource: resource ?? this.resource,
+      resourceAmount: resourceAmount ?? this.resourceAmount,
+      categoryId: clearCategory ? null : categoryId ?? this.categoryId,
+    );
+  }
 
   // Helper to convert targetTime string to TimeOfDay to show in the UI
   TimeOfDay? get timeOfDay {
@@ -93,5 +103,6 @@ TaskTemplate copyWith({
     'task_recurrence_id': recurrenceId,
     'resource': resource,
     'resource_amount': resourceAmount,
+    'category_id': categoryId,
   };
 }

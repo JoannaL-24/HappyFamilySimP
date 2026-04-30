@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:happy_family_sim/core/constants.dart';
+import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 import 'package:happy_family_sim/features/tasks/model/task_template.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,6 +10,77 @@ import '../util/task_scheduler.dart';
 
 class TaskRepository {
   final _supabase = Supabase.instance.client;
+
+  Future<List<TaskCategory>> fetchTaskCategories(String parentId) async {
+    if (parentId.isEmpty) {
+      return [];
+    }
+
+    final response = await _supabase
+        .from('task_category')
+        .select('id, name, color')
+        .eq('parent_id', parentId)
+        .order('name', ascending: true);
+
+    return (response as List)
+        .map((row) => TaskCategory.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<TaskCategory> addTaskCategory({
+    required String parentId,
+    required String name,
+    required String color,
+  }) async {
+    final response = await _supabase
+        .from('task_category')
+        .insert({
+          'name': name,
+          'color': color,
+          'parent_id': parentId,
+        })
+        .select('id, name, color')
+        .single();
+
+    return TaskCategory.fromJson(response);
+  }
+
+  Future<TaskCategory> updateTaskCategory({
+    required int id,
+    required String parentId,
+    required String name,
+    required String color,
+  }) async {
+    final response = await _supabase
+        .from('task_category')
+        .update({
+          'name': name,
+          'color': color,
+        })
+        .eq('id', id)
+        .eq('parent_id', parentId)
+        .select('id, name, color')
+        .single();
+
+    return TaskCategory.fromJson(response);
+  }
+
+  Future<void> deleteTaskCategory({
+    required int id,
+    required String parentId,
+  }) async {
+    await _supabase
+        .from('task_template')
+        .update({'category_id': null})
+        .eq('category_id', id)
+        .eq('parent_id', parentId);
+
+    await _supabase
+        .from('task_category')
+        .delete()
+        .eq('id', id)
+        .eq('parent_id', parentId);
+  }
 
   // Fetch occurrences for a specific child, including template details
   Future<List<TaskOccurrence>> fetchChildTasks(String parentId) async {
@@ -91,6 +163,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
   }) async {
     try {
       await _supabase
@@ -100,9 +173,10 @@ class TaskRepository {
             'title': title,
             'description': description,
             'proof_required': proofRequired,
-          'resource': resource.toLowerCase(),
-          'resource_amount': resourceAmount,
-        })
+            'resource': resource.toLowerCase(),
+            'resource_amount': resourceAmount,
+            'category_id': categoryId,
+          })
           .eq('id', templateId)
           .select('id')
           .single();
@@ -145,6 +219,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
   }) async {
     final response = await _supabase
         .from('task_template')
@@ -154,7 +229,8 @@ class TaskRepository {
           'description': description,
           'proof_required': proofRequired,
           'resource': resource.toLowerCase(),
-            'resource_amount': resourceAmount,
+          'resource_amount': resourceAmount,
+          'category_id': categoryId,
         })
         .select()
         .single();
@@ -211,6 +287,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
 
     required String childId,
     required DateTime dueDate,
@@ -255,6 +332,7 @@ class TaskRepository {
           'target_time': formatTimeForDb(TimeOfDay.fromDateTime(dueDate)),
           'resource': resource.toLowerCase(),
           'resource_amount': resourceAmount,
+          'category_id': categoryId,
         })
         .select()
         .single();
@@ -324,6 +402,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
     required String childId,
     required DateTime startDate,
     required DateTime oldDueDate,
@@ -349,6 +428,7 @@ class TaskRepository {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: categoryId,
         childId: childId,
         updateChildAssignments: updateChildAssignments,
         endDate: normalizedEndDate,
@@ -370,6 +450,7 @@ class TaskRepository {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: categoryId,
         childId: childId,
         updateChildAssignments: updateChildAssignments,
       );
@@ -387,6 +468,7 @@ class TaskRepository {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: categoryId,
       );
 
       await _supabase.from('task_occurrence').insert({
@@ -414,6 +496,7 @@ class TaskRepository {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: categoryId,
         childId: childId,
         startDate: startDate,
         endDate: normalizedEndDate,
@@ -438,6 +521,7 @@ class TaskRepository {
       proofRequired: proofRequired,
       resource: resource,
       resourceAmount: resourceAmount,
+      categoryId: categoryId,
       recurrenceId: newRecurrenceId,
       endDate: normalizedEndDate,
       targetTime: targetTime,
@@ -500,6 +584,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
     required String childId,
     required bool updateChildAssignments,
     required DateTime? endDate,
@@ -519,6 +604,7 @@ class TaskRepository {
           'proof_required': proofRequired,
           'resource': resource.toLowerCase(),
           'resource_amount': resourceAmount,
+          'category_id': categoryId,
           'end_date': endDate?.toIso8601String(),
           'target_time': _formatTimeForDate(startDate),
         })
@@ -572,6 +658,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
     required String childId,
     required bool updateChildAssignments,
   }) async {
@@ -584,6 +671,7 @@ class TaskRepository {
           'proof_required': proofRequired,
           'resource': resource.toLowerCase(),
           'resource_amount': resourceAmount,
+          'category_id': categoryId,
         })
         .eq('id', templateId)
         .select('id')
@@ -606,6 +694,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
     required String childId,
     required DateTime startDate,
     required DateTime? endDate,
@@ -646,6 +735,7 @@ class TaskRepository {
           'proof_required': proofRequired,
           'resource': resource.toLowerCase(),
           'resource_amount': resourceAmount,
+          'category_id': categoryId,
           'task_recurrence_id': currentRecurrenceId,
           'target_time': targetTime,
           'end_date': endDate?.toIso8601String(),
@@ -829,6 +919,7 @@ class TaskRepository {
     required bool proofRequired,
     required String resource,
     required int resourceAmount,
+    int? categoryId,
     int? recurrenceId,
     DateTime? endDate,
     String? targetTime,
@@ -845,6 +936,7 @@ class TaskRepository {
           'target_time': targetTime,
           'resource': resource.toLowerCase(),
           'resource_amount': resourceAmount,
+          'category_id': categoryId,
         })
         .select('id')
         .single();
