@@ -234,8 +234,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
             )
           else ...[
             _buildTaskSection('Not Done', notDoneTasks),
-            _buildTaskSection('Missed', missedTasks),
             _buildTaskSection('Complete', completedTasks),
+            _buildTaskSection('Missed', missedTasks),
           ],
         ],
       ),
@@ -507,7 +507,10 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   // Category changes update the local screen state immediately, then rely on the
   // repository for the DB write. Delete also clears the category on loaded tasks.
   Future<void> _showAddCategoryDialog() async {
-    final category = await showTaskCategoryEditorDialog(context);
+    final category = await showTaskCategoryEditorDialog(
+      context,
+      existingCategories: _categories,
+    );
 
     if (category == null) {
       return;
@@ -537,6 +540,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     final editedCategory = await showTaskCategoryEditorDialog(
       context,
       category: category,
+      existingCategories: _categories,
     );
 
     if (editedCategory == null) {
@@ -999,12 +1003,17 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             segments: const [
                               ButtonSegment(
                                 value: 'NOTD',
-                                label: Text('Pending'),
+                                label: Text('Not Done'),
                                 icon: Icon(Icons.hourglass_empty),
                               ),
                               ButtonSegment(
+                                value: 'MISS',
+                                label: Text('Missed'),
+                                icon: Icon(Icons.error_outline),
+                              ),
+                              ButtonSegment(
                                 value: 'COMP',
-                                label: Text('Completed'),
+                                label: Text('Complete'),
                                 icon: Icon(Icons.check_circle_outline),
                               ),
                             ],
@@ -1210,6 +1219,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         const SizedBox(height: 24),
 
                         // 8. COMBINED SAVE LOGIC
+                        if (!isEditing || currentStatus != 'COMP')
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
