@@ -375,9 +375,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 
   Widget _buildTaskSection(String title, List<TaskOccurrence> tasks) {
-    if (tasks.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
@@ -394,6 +392,22 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
               ),
             ),
           ),
+          if (tasks.isEmpty) 
+             Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 34),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              child: Text(
+                "No $title tasks Today with ${_selectedCategory()?.name ?? 'all categories'}.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.quicksand(fontWeight: FontWeight.w700),
+              ),
+            )
+          else
           ...tasks.map(
             (task) => _TaskCard(
               occurrence: task,
