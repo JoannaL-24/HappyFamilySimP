@@ -51,6 +51,10 @@ class TaskRepository {
     required String name,
     required String color,
   }) async {
+    if (parentId.isEmpty) {
+      throw Exception('Cannot update category before the parent profile loads.');
+    }
+
     final response = await _supabase
         .from('task_category')
         .update({
@@ -59,21 +63,27 @@ class TaskRepository {
         })
         .eq('id', id)
         .eq('parent_id', parentId)
-        .select('id, name, color')
-        .single();
+        .select('id, name, color');
 
-    return TaskCategory.fromJson(response);
+    final rows = response as List;
+    if (rows.isEmpty) {
+      throw Exception(
+        'Category was not updated. The row was not found for this parent, or the task_category UPDATE policy blocked it.',
+      );
+    }
+
+    return TaskCategory.fromJson(Map<String, dynamic>.from(rows.first));
   }
 
   Future<void> deleteTaskCategory({
     required int id,
     required String parentId,
   }) async {
-    await _supabase
-        .from('task_template')
-        .update({'category_id': null})
-        .eq('category_id', id)
-        .eq('parent_id', parentId);
+    // await _supabase
+    //     .from('task_template')
+    //     .update({'category_id': null})
+    //     .eq('category_id', id)
+    //     .eq('parent_id', parentId);
 
     await _supabase
         .from('task_category')
