@@ -5,12 +5,18 @@ import 'package:happy_family_sim/features/management/data/manage_repository.dart
 import 'package:happy_family_sim/features/management/data/manage_service.dart';
 import 'package:happy_family_sim/features/tasks/util/custom_recurring_page.dart';
 import 'package:happy_family_sim/features/tasks/util/recurring_tools.dart';
+import 'package:happy_family_sim/features/tasks/ui/parent/category/task_category_bar.dart';
+import 'package:happy_family_sim/features/tasks/ui/parent/category/task_category_dialogs.dart';
 import 'package:intl/intl.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 import 'package:happy_family_sim/features/tasks/data/task_repository.dart';
 import 'package:happy_family_sim/features/auth/data/auth_repository.dart';
+import 'package:happy_family_sim/features/tasks/model/task_category.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+part '../../model/recurrence_helper_models.dart';
+part 'tasks_view_task_list_widgets.dart';
 
 class ParentTasksScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -51,12 +57,48 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       'amount': 3,
     },
   ];
+  late DateTime _visibleWeekStart;
+  late DateTime _selectedTaskDate;
+  int? _selectedCategoryId;
+  final List<TaskCategory> _categories = [];
+
+  String get _parentId => widget.authRepository.currentUser?.id ?? '';
 
   @override
   void initState() {
     super.initState();
+    _selectedTaskDate = _dateOnly(DateTime.now());
+    _visibleWeekStart = _startOfWeek(_selectedTaskDate);
     _refreshTasks();
     _loadChildren();
+    _loadCategories();
+  }
+
+  // Data loading stays close to screen state because these lists drive filters,
+  // assignee chips, and the task cards shown below.
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _taskRepository.fetchTaskCategories(_parentId);
+      setState(() {
+        _categories
+          ..clear()
+          ..addAll(categories);
+        if (_selectedCategoryId != null &&
+            !_categories.any((category) => category.id == _selectedCategoryId)) {
+          _selectedCategoryId = null;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not load categories'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(label: 'Retry', onPressed: _loadCategories),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _refreshTasks() async {
@@ -95,6 +137,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     }
   }
 
+  // Page shell and top-level layout.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -165,23 +208,424 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_tasks.isEmpty) {
-      return const Center(child: Text("No tasks found."));
-    }
+    final visibleTasks = _visibleTasks();
+    final notDoneTasks = visibleTasks
+        .where((task) => task.status == 'NOTD' && !_isMissed(task))
+        .toList();
+    final missedTasks = visibleTasks.where(_isMissed).toList();
+    final completedTasks = visibleTasks
+        .where((task) => task.status == 'COMP')
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _refreshTasks,
-      child: ListView.builder(
+      child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        itemCount: _tasks.length,
-        itemBuilder: (context, index) => _TaskCard(
-          occurrence: _tasks[index],
-          isSelectionMode: _isSelectionMode,
-          isSelected: _selectedTaskIds.contains(_tasks[index].id),
-          onTap: () => _handleTaskTap(_tasks[index]),
+        children: [
+          _buildWeekStrip(),
+          const SizedBox(height: 10),
+          _buildCategoryBar(),
+          const SizedBox(height: 14),
+          if (visibleTasks.isEmpty)
+            _EmptyWeekMessage(
+              hasTasks: _tasks.isNotEmpty,
+              hasCategoryFilter: _selectedCategoryId != null,
+              selectedDate: _selectedTaskDate,
+            )
+          else ...[
+            _buildTaskSection('Not Done', notDoneTasks),
+            _buildTaskSection('Complete', completedTasks),
+            _buildTaskSection('Missed', missedTasks),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Calendar, category filters, and the visible task list.
+  Widget _buildWeekStrip() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final weekDays = List.generate(
+      7,
+      (index) => _visibleWeekStart.add(Duration(days: index)),
+    );
+
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -150) {
+          _shiftWeek(1);
+        } else if (velocity > 150) {
+          _shiftWeek(-1);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  DateFormat('EEE, MMM d').format(_selectedTaskDate),
+                  style: GoogleFonts.quicksand(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF5A3E36),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Pick date',
+                  onPressed: _showMonthPicker,
+                  icon: const Icon(Icons.expand_more),
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  tooltip: 'Previous week',
+                  onPressed: () => _shiftWeek(-1),
+                  icon: const Icon(Icons.chevron_left),
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  tooltip: 'Next week',
+                  onPressed: () => _shiftWeek(1),
+                  icon: const Icon(Icons.chevron_right),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: weekDays.map(_buildWeekDay).toList(),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildWeekDay(DateTime date) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isToday = _isSameDate(date, DateTime.now());
+    final isSelected = _isSameDate(date, _selectedTaskDate);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => setState(() {
+        _selectedTaskDate = _dateOnly(date);
+        _visibleWeekStart = _startOfWeek(date);
+      }),
+      child: Container(
+        width: 38,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primaryContainer : null,
+          shape: BoxShape.circle,
+          border: isToday && !isSelected
+              ? Border.all(color: colorScheme.primary.withAlpha(120))
+              : null,
+        ),
+        child: Column(
+          children: [
+            Text(
+              DateFormat('E').format(date).toLowerCase(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isSelected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              date.day.toString(),
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: isSelected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryBar() {
+    return TaskCategoryBar(
+      categories: _categories,
+      selectedCategoryId: _selectedCategoryId,
+      onSelected: (categoryId) => setState(
+        () => _selectedCategoryId = categoryId,
+      ),
+      onAdd: _showAddCategoryDialog,
+      onCategoryLongPress: (category) {
+        _showCategoryActions(category);
+      },
+    );
+  }
+
+  Widget _buildTaskSection(String title, List<TaskOccurrence> tasks) {
+    if (tasks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            child: Text(
+              title.toUpperCase(),
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF5A3E36),
+              ),
+            ),
+          ),
+          ...tasks.map(
+            (task) => _TaskCard(
+              occurrence: task,
+              categoryColor: _categoryColorFor(task),
+              isSelectionMode: _isSelectionMode,
+              isSelected: _selectedTaskIds.contains(task.id),
+              onTap: () => _handleTaskTap(task),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<TaskOccurrence> _visibleTasks() {
+    final selectedCategory = _selectedCategory();
+
+    final tasks = _tasks.where((task) {
+      if (!_isSameDate(task.dueDate, _selectedTaskDate)) {
+        return false;
+      }
+
+      if (selectedCategory == null) {
+        return true;
+      }
+
+      return task.template?.categoryId == selectedCategory.id;
+    }).toList();
+
+    tasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    return tasks;
+  }
+
+  bool _isMissed(TaskOccurrence task) {
+    if (task.status == 'MISS') {
+      return true;
+    }
+
+    return task.status == 'NOTD' && task.dueDate.isBefore(DateTime.now());
+  }
+
+  TaskCategory? _selectedCategory() {
+    if (_selectedCategoryId == null) {
+      return null;
+    }
+
+    for (final category in _categories) {
+      if (category.id == _selectedCategoryId) {
+        return category;
+      }
+    }
+
+    return null;
+  }
+
+  Color _categoryColorFor(TaskOccurrence task) {
+    final categoryId = task.template?.categoryId;
+    final category = _categories.firstWhere(
+      (category) => category.id == categoryId,
+      orElse: () => TaskCategory(
+        id: -1,
+        name: 'Other',
+        color: Theme.of(context).colorScheme.outline,
+      ),
+    );
+
+    return category.color;
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final midnight = DateTime(date.year, date.month, date.day);
+    return midnight.subtract(Duration(days: midnight.weekday - 1));
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  void _shiftWeek(int weekOffset) {
+    setState(() {
+      _visibleWeekStart = _visibleWeekStart.add(Duration(days: weekOffset * 7));
+      _selectedTaskDate = _visibleWeekStart;
+    });
+  }
+
+  Future<void> _showMonthPicker() async {
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: CalendarDatePicker(
+            initialDate: _selectedTaskDate,
+            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+            lastDate: DateTime.now().add(const Duration(days: 730)),
+            onDateChanged: (date) => Navigator.pop(context, date),
+          ),
+        ),
+      ),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedTaskDate = _dateOnly(picked);
+        _visibleWeekStart = _startOfWeek(picked);
+      });
+    }
+  }
+
+  // Category changes update the local screen state immediately, then rely on the
+  // repository for the DB write. Delete also clears the category on loaded tasks.
+  Future<void> _showAddCategoryDialog() async {
+    final category = await showTaskCategoryEditorDialog(
+      context,
+      existingCategories: _categories,
+    );
+
+    if (category == null) {
+      return;
+    }
+
+    try {
+      final savedCategory = await _taskRepository.addTaskCategory(
+        parentId: _parentId,
+        name: category.name,
+        color: category.colorHex,
+      );
+      setState(() {
+        _categories.add(savedCategory);
+        _sortCategories();
+        _selectedCategoryId = savedCategory.id;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not add category: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEditCategoryDialog(TaskCategory category) async {
+    final editedCategory = await showTaskCategoryEditorDialog(
+      context,
+      category: category,
+      existingCategories: _categories,
+    );
+
+    if (editedCategory == null) {
+      return;
+    }
+
+    try {
+      final savedCategory = await _taskRepository.updateTaskCategory(
+        id: category.id,
+        parentId: _parentId,
+        name: editedCategory.name,
+        color: editedCategory.colorHex,
+      );
+      setState(() {
+        final index = _categories.indexWhere(
+          (category) => category.id == savedCategory.id,
+        );
+        if (index == -1) {
+          _categories.add(savedCategory);
+        } else {
+          _categories[index] = savedCategory;
+        }
+        _sortCategories();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update category: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showCategoryActions(TaskCategory category) async {
+    final action = await showTaskCategoryActions(context, category);
+
+    if (action == TaskCategoryAction.edit) {
+      await _showEditCategoryDialog(category);
+    } else if (action == TaskCategoryAction.delete) {
+      await _confirmDeleteCategory(category);
+    }
+  }
+
+  void _sortCategories() {
+    _categories.sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    );
+  }
+
+  Future<void> _confirmDeleteCategory(TaskCategory category) async {
+    if (!await confirmDeleteTaskCategory(context, category)) {
+      return;
+    }
+
+    try {
+      await _taskRepository.deleteTaskCategory(
+        id: category.id,
+        parentId: _parentId,
+      );
+      setState(() {
+        _categories.removeWhere(
+          (existingCategory) => existingCategory.id == category.id,
+        );
+        if (_selectedCategoryId == category.id) {
+          _selectedCategoryId = null;
+        }
+        _tasks = _tasks.map((task) {
+          final template = task.template;
+          if (template?.categoryId != category.id) {
+            return task;
+          }
+
+          return task.copyWith(
+            template: template!.copyWith(clearCategory: true),
+          );
+        }).toList();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete category: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildNewTaskButton(ColorScheme colorScheme) {
@@ -246,6 +690,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 
   // --- Edit Logistics: Bottom Sheet ---
+  // Bottom-sheet task form. The field state lives here so create and edit can
+  // share one form without adding a separate controller class.
   void _showTaskForm({TaskOccurrence? occurrence}) {
     final bool isEditing = occurrence != null;
 
@@ -268,6 +714,9 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     String? selectedResource = isEditing
         ? occurrence.template?.resource
         : 'food';
+    int? selectedTaskCategoryId = isEditing
+        ? occurrence.template?.categoryId
+        : null;
     int resourceAmount = isEditing
         ? (occurrence.template?.resourceAmount ?? 1)
         : 1;
@@ -554,12 +1003,17 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             segments: const [
                               ButtonSegment(
                                 value: 'NOTD',
-                                label: Text('Pending'),
+                                label: Text('Not Done'),
                                 icon: Icon(Icons.hourglass_empty),
                               ),
                               ButtonSegment(
+                                value: 'MISS',
+                                label: Text('Missed'),
+                                icon: Icon(Icons.error_outline),
+                              ),
+                              ButtonSegment(
                                 value: 'COMP',
-                                label: Text('Completed'),
+                                label: Text('Complete'),
                                 icon: Icon(Icons.check_circle_outline),
                               ),
                             ],
@@ -629,6 +1083,56 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             },
                           ),
                         ],
+                        const SizedBox(height: 16),
+                        Text("Category", style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<int?>(
+                          initialValue: selectedTaskCategoryId,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.label_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('No category'),
+                            ),
+                            if (selectedTaskCategoryId != null &&
+                                !_categories.any(
+                                  (category) =>
+                                      category.id == selectedTaskCategoryId,
+                                ))
+                              DropdownMenuItem<int?>(
+                                value: selectedTaskCategoryId,
+                                enabled: false,
+                                child: const Text('Current category unavailable'),
+                              ),
+                            ..._categories.map(
+                              (category) => DropdownMenuItem<int?>(
+                                value: category.id,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: category.color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(category.name),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) => setSheetState(
+                            () => selectedTaskCategoryId = value,
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         // 7. Recurring Section
                         Text("Repeated", style: theme.textTheme.labelLarge),
@@ -715,6 +1219,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         const SizedBox(height: 24),
 
                         // 8. COMBINED SAVE LOGIC
+                        if (!isEditing || currentStatus != 'COMP')
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
@@ -734,6 +1239,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                                         selectedChildIds: selectedChildIds,
                                         selectedResource: selectedResource,
                                         resourceAmount: resourceAmount,
+                                        selectedTaskCategoryId: selectedTaskCategoryId,
                                         repeatOption: repeatOption,
                                         customRecurrence: customRecurrence,
                                         endDate: endDate,
@@ -789,7 +1295,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     );
   }
 
-
+  // Save flow: create/update dispatch, validation, and recurring update policy.
   Future<bool> _submitTaskForm({
     required BuildContext context,
     required TaskOccurrence? occurrence,
@@ -802,6 +1308,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required List<String> selectedChildIds,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
     required String repeatOption,
     required Map<String, dynamic>? customRecurrence,
     required DateTime? endDate,
@@ -832,6 +1339,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         selectedChildIds: selectedChildIds,
         selectedResource: selectedResource,
         resourceAmount: resourceAmount,
+        selectedTaskCategoryId: selectedTaskCategoryId,
         recurrence: recurrence,
         endDate: endDate,
       );
@@ -849,6 +1357,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       selectedChildId: selectedChildId!,
       selectedResource: selectedResource,
       resourceAmount: resourceAmount,
+      selectedTaskCategoryId: selectedTaskCategoryId,
       recurrence: recurrence,
       endDate: endDate,
       onSavingStarted: onSavingStarted,
@@ -882,6 +1391,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required List<String> selectedChildIds,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
     required _RecurrenceFields recurrence,
     required DateTime? endDate,
   }) async {
@@ -901,6 +1411,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           proofRequired: proofRequired,
           resource: resource,
           resourceAmount: resourceAmount,
+          categoryId: selectedTaskCategoryId,
         );
         final newTask = await _taskRepository.createOccurrence(
           childId: childId,
@@ -922,6 +1433,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: selectedTaskCategoryId,
         childId: childId,
         dueDate: selectedDate,
         endDate: endDate,
@@ -945,6 +1457,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String selectedChildId,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
     required _RecurrenceFields recurrence,
     required DateTime? endDate,
     required VoidCallback onSavingStarted,
@@ -960,6 +1473,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       selectedChildId: selectedChildId,
       selectedResource: selectedResource,
       resourceAmount: resourceAmount,
+      selectedTaskCategoryId: selectedTaskCategoryId,
       recurrence: recurrence,
       endDate: normalizedEndDate,
     );
@@ -979,6 +1493,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         proofRequired: proofRequired,
         resource: selectedResource ?? 'food',
         resourceAmount: resourceAmount,
+        categoryId: selectedTaskCategoryId,
         childId: selectedChildId,
         startDate: selectedDate,
         pattern: recurrence.pattern,
@@ -1010,6 +1525,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       selectedChildId: selectedChildId,
       selectedResource: selectedResource,
       resourceAmount: resourceAmount,
+      selectedTaskCategoryId: selectedTaskCategoryId,
     );
     return true;
   }
@@ -1024,6 +1540,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String selectedChildId,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
     required _RecurrenceFields recurrence,
     required DateTime? endDate,
   }) async {
@@ -1048,6 +1565,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       selectedChildId: selectedChildId,
       selectedResource: selectedResource,
       resourceAmount: resourceAmount,
+      selectedTaskCategoryId: selectedTaskCategoryId,
     );
 
     if (!isCurrentlyRecurring && !wantToRecurring) {
@@ -1136,6 +1654,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String selectedChildId,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
   }) async {
     final resource = selectedResource ?? 'food';
     final template = occurrence.template;
@@ -1144,7 +1663,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         description != template?.description ||
         proofRequired != template?.proofRequired ||
         resource != template?.resource ||
-        resourceAmount != template?.resourceAmount;
+        resourceAmount != template?.resourceAmount ||
+        selectedTaskCategoryId != template?.categoryId;
     final occurrenceChanged =
         !_isSameDate(occurrence.dueDate, selectedDate) ||
         !_isSameTime(occurrence.dueDate, selectedDate) ||
@@ -1159,6 +1679,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
+        categoryId: selectedTaskCategoryId,
       );
     }
 
@@ -1181,6 +1702,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       proofRequired: proofRequired,
       selectedResource: resource,
       resourceAmount: resourceAmount,
+      selectedTaskCategoryId: selectedTaskCategoryId,
     );
   }
 
@@ -1194,6 +1716,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required bool proofRequired,
     required String selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
   }) {
     final index = _tasks.indexWhere((task) => task.id == occurrence.id);
     if (index == -1) {
@@ -1212,11 +1735,15 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
           proofRequired: proofRequired,
           resource: selectedResource,
           resourceAmount: resourceAmount,
+          categoryId: selectedTaskCategoryId,
+          clearCategory: selectedTaskCategoryId == null,
         ),
       );
     });
   }
 
+  // Form-to-domain helpers. These keep recurrence comparison readable in the
+  // update policy above.
   _RecurrenceFields _recurrenceFromForm({
     required String repeatOption,
     required Map<String, dynamic>? customRecurrence,
@@ -1322,6 +1849,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String selectedChildId,
     required String? selectedResource,
     required int resourceAmount,
+    required int? selectedTaskCategoryId,
   }) {
     final template = occurrence.template;
 
@@ -1330,7 +1858,8 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         proofRequired != template?.proofRequired ||
         selectedChildId != occurrence.childId ||
         (selectedResource ?? 'food') != template?.resource ||
-        resourceAmount != template?.resourceAmount;
+        resourceAmount != template?.resourceAmount ||
+        selectedTaskCategoryId != template?.categoryId;
   }
 
   bool _isSameDate(DateTime first, DateTime second) {
@@ -1393,6 +1922,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         .toString();
   }
 
+  // Dialog helpers used by the task form and destructive actions.
   Future<DateTime?> _showCustomDateTimePicker(
     BuildContext context,
     DateTime initialDate,
@@ -1717,298 +2247,3 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 }
 
-class _RecurrenceFields {
-  const _RecurrenceFields({
-    required this.pattern,
-    required this.interval,
-    this.dayOfWeek,
-    this.dayOfMonth,
-  });
-
-  final String pattern;
-  final int interval;
-  final List<int>? dayOfWeek;
-  final List<int>? dayOfMonth;
-}
-
-class _SeriesUpdatePlan {
-  const _SeriesUpdatePlan({required this.scope, this.updateScope});
-
-  factory _SeriesUpdatePlan.single() {
-    return const _SeriesUpdatePlan(scope: 'single');
-  }
-
-  factory _SeriesUpdatePlan.future(String updateScope) {
-    return _SeriesUpdatePlan(scope: 'future', updateScope: updateScope);
-  }
-
-  final String scope;
-  final String? updateScope;
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.occurrence,
-    required this.isSelectionMode,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final TaskOccurrence occurrence;
-  final bool isSelectionMode;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final template = occurrence.template;
-    final isDone = occurrence.status == 'COMP';
-
-    if (template == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Opacity(
-      opacity: isDone ? 0.6 : 1,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 14),
-        color: _cardColor(colorScheme, isDone),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: _borderColor(colorScheme, isDone)),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                if (isSelectionMode) _SelectionIcon(isSelected: isSelected),
-                _ChildAvatarWithStatus(
-                  avatarUrl: occurrence.childAvatar,
-                  isDone: isDone,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _TaskCardDetails(
-                    occurrence: occurrence,
-                    isDone: isDone,
-                  ),
-                ),
-                _TaskCardTrailing(
-                  dueDate: occurrence.dueDate,
-                  isDone: isDone,
-                  showChevron: !isSelectionMode,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _cardColor(ColorScheme colorScheme, bool isDone) {
-    if (isSelected) {
-      return colorScheme.primaryContainer;
-    }
-
-    return isDone ? colorScheme.surfaceContainerHigh : colorScheme.surface;
-  }
-
-  Color _borderColor(ColorScheme colorScheme, bool isDone) {
-    if (isSelected) {
-      return colorScheme.primary.withAlpha(100);
-    }
-
-    return isDone ? Colors.transparent : colorScheme.primary.withAlpha(50);
-  }
-}
-
-class _SelectionIcon extends StatelessWidget {
-  const _SelectionIcon({required this.isSelected});
-
-  final bool isSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: isSelected ? colorScheme.primary : colorScheme.outline,
-        size: 20,
-      ),
-    );
-  }
-}
-
-class _ChildAvatarWithStatus extends StatelessWidget {
-  const _ChildAvatarWithStatus({required this.avatarUrl, required this.isDone});
-
-  final String avatarUrl;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: colorScheme.surfaceDim,
-          backgroundImage: avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
-          child: avatarUrl.isEmpty ? const Icon(Icons.person) : null,
-        ),
-        if (isDone)
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.check, size: 10, color: colorScheme.onPrimary),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _TaskCardDetails extends StatelessWidget {
-  const _TaskCardDetails({required this.occurrence, required this.isDone});
-
-  final TaskOccurrence occurrence;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final template = occurrence.template!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          template.title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            decoration: isDone ? TextDecoration.lineThrough : null,
-            color: isDone ? colorScheme.outline : colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Text(
-              occurrence.childName,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: colorScheme.secondary,
-                // fontWeight: FontWeight.w500,
-                // letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent.withAlpha(30),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  // TODO:change icon baeed on resource type in the future 
-                  const Icon(Icons.stars_rounded, size: 12, color: Colors.orangeAccent),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${template.resourceAmount}",
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TaskCardTrailing extends StatelessWidget {
-  const _TaskCardTrailing({
-    required this.dueDate,
-    required this.isDone,
-    required this.showChevron,
-  });
-
-  final DateTime dueDate;
-  final bool isDone;
-  final bool showChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        _DueChip(date: dueDate, isDone: isDone),
-        if (showChevron) ...[
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right, size: 20, color: colorScheme.outline),
-        ],
-      ],
-    );
-  }
-}
-
-class _DueChip extends StatelessWidget {
-  const _DueChip({required this.date, required this.isDone});
-
-  final DateTime date;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final isOverdue = date.isBefore(DateTime(now.year, now.month, now.day)) && !isDone;
-
-    // Semantic Colors: Red for overdue, Primary for upcoming, Outline for done
-    final Color color = isDone 
-        ? colorScheme.outline 
-        : (isOverdue ? colorScheme.error : colorScheme.primary);
-
-    String label = DateFormat('MMM d').format(date);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(8),
-        border: isOverdue ? Border.all(color: color.withAlpha(50)) : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
