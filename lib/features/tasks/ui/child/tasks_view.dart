@@ -810,15 +810,15 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _QuestActionButton(
-                        isPending: isPending,
-                        proofRequired: proofRequired,
-                        onPressed:
-                            isPending ? null : () => _confirmMarkAsDone(task),
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.only(right: 8),
+                    //   child: _QuestActionButton(
+                    //     isPending: isPending,
+                    //     proofRequired: proofRequired,
+                    //     onPressed:
+                    //         isPending ? null : () => _confirmMarkAsDone(task),
+                    //   ),
+                    // ),
                     Icon(
                       Icons.chevron_right,
                       size: 20,

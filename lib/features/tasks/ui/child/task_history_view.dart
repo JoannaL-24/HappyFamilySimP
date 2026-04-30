@@ -6,6 +6,20 @@ import 'package:happy_family_sim/features/tasks/data/child/tasks_repository.dart
 import 'package:intl/intl.dart';
 import 'package:happy_family_sim/features/tasks/model/task_occurence.dart';
 
+const _questBackground = Color(0xFFFFF6E8);
+const _questPanel = Color(0xFFFFFBF2);
+const _questBrown = Color(0xFF5A3E36);
+const _questText = Color(0xFF3E2D28);
+const _questMuted = Color(0xFF6E5A50);
+const _questSuccess = Color(0xFF58A96B);
+const _questMissed = Color(0xFF8A7A70);
+const _questDanger = Color(0xFFD05A4E);
+const _questPhoto = Color(0xFF4F83CC);
+const _questFood = Color(0xFFE8873D);
+const _questPlay = Color(0xFF4F83CC);
+const _questClean = Color(0xFF48A06D);
+const _questMagic = Color(0xFFB274C8);
+
 class TaskHistoryScreen extends StatefulWidget {
   final AuthRepository authRepository;
   const TaskHistoryScreen({super.key, required this.authRepository});
@@ -137,9 +151,9 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                primary: Color(0xFF5A3E36),
+                primary: _questBrown,
                 onPrimary: Colors.white,
-                onSurface: Color(0xFF5A3E36),
+                onSurface: _questBrown,
               ),
             ),
             child: child!,
@@ -176,12 +190,17 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _questBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
           ),
           title: Text(
             'Select Month (${_selectedDate.year})',
-            style: GoogleFonts.quicksand(fontWeight: FontWeight.bold),
+            style: GoogleFonts.pixelifySans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _questBrown,
+            ),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -210,19 +229,20 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF5A3E36).withAlpha(40)
+                          ? _questBrown.withAlpha(40)
                           : null,
                       borderRadius: BorderRadius.circular(8),
+                      border: isSelected
+                          ? Border.all(color: _questBrown, width: 2)
+                          : null,
                     ),
                     child: Text(
                       months[index].substring(0, 3),
                       style: GoogleFonts.quicksand(
-                        color: isSelected
-                            ? const Color(0xFF5A3E36)
-                            : Colors.black87,
+                        color: isSelected ? _questBrown : _questText,
                         fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                            ? FontWeight.w900
+                            : FontWeight.w700,
                       ),
                     ),
                   ),
@@ -243,12 +263,17 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _questBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
           ),
           title: Text(
             'Select Year',
-            style: GoogleFonts.quicksand(fontWeight: FontWeight.bold),
+            style: GoogleFonts.pixelifySans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _questBrown,
+            ),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -266,11 +291,9 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     year.toString(),
                     style: GoogleFonts.quicksand(
                       fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? const Color(0xFF5A3E36)
-                          : Colors.black87,
+                          ? FontWeight.w900
+                          : FontWeight.w700,
+                      color: isSelected ? _questBrown : _questText,
                     ),
                   ),
                   onTap: () {
@@ -284,7 +307,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     Navigator.pop(context);
                   },
                   selected: isSelected,
-                  selectedTileColor: const Color(0xFF5A3E36).withAlpha(20),
+                  selectedTileColor: _questBrown.withAlpha(20),
                 );
               },
             ),
@@ -297,17 +320,17 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF6E8),
+      backgroundColor: _questBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF6E8),
-        foregroundColor: const Color(0xFF5A3E36),
+        backgroundColor: _questBackground,
+        foregroundColor: _questBrown,
         elevation: 0,
         title: Text(
           'Quest History',
           style: GoogleFonts.pixelifySans(
             fontSize: 28,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF5A3E36),
+            color: _questBrown,
           ),
         ),
         centerTitle: true,
@@ -369,7 +392,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
               return _FilterPill(
                 label: period,
                 isSelected: _periodFilter == period,
-                color: const Color(0xFF5A3E36),
+                color: _questBrown,
                 onTap: () => setState(() => _periodFilter = period),
               );
             }).toList(),
@@ -394,7 +417,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                       style: GoogleFonts.pixelifySans(
                         fontSize: 22,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF5A3E36),
+                        color: _questBrown,
                       ),
                     ),
                   ),
@@ -452,26 +475,26 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Completed':
-        return Colors.green;
+        return _questSuccess;
       case 'Missed':
-        return Colors.grey;
+        return _questMissed;
       case 'Rejected':
-        return Colors.red;
+        return _questDanger;
       default:
-        return const Color(0xFF5A3E36);
+        return _questBrown;
     }
   }
 
   Color _getTaskStatusColor(String status) {
     switch (status) {
       case 'COMP':
-        return Colors.green;
+        return _questSuccess;
       case 'MISS':
-        return Colors.grey;
+        return _questMissed;
       case 'REJC':
-        return Colors.red;
+        return _questDanger;
       default:
-        return Colors.blue;
+        return _questPhoto;
     }
   }
 
@@ -530,7 +553,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                         color: statusColor.withAlpha(26),
                         border: Border(
                           right: BorderSide(
-                            color: const Color(0xFF5A3E36).withAlpha(80),
+                            color: _questBrown.withAlpha(80),
                             width: 2,
                           ),
                         ),
@@ -556,7 +579,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                               style: GoogleFonts.quicksand(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
-                                color: const Color(0xFF3E2D28),
+                                color: _questText,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -565,7 +588,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                               style: GoogleFonts.quicksand(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF6E5A50),
+                                color: _questMuted,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -591,7 +614,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                         ),
                       ),
                     ),
-                    Icon(Icons.chevron_right, color: Colors.brown.shade300),
+                    Icon(Icons.chevron_right, color: _questBrown.withAlpha(120)),
                     const SizedBox(width: 8),
                   ],
                 ),
@@ -607,7 +630,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFFFF6E8),
+      backgroundColor: _questBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
@@ -620,7 +643,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
     final statusLabel = _getStatusLabel(task.status);
     final template = task.template;
     final resourceColor = _resourceColor(template?.resource ?? '');
-    const titleColor = Color(0xFF5A3E36);
+    const titleColor = _questBrown;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.68,
@@ -670,7 +693,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                 _MiniChip(
                   icon: Icons.calendar_today_rounded,
                   label: 'Due ${DateFormat('MMM d, h:mm a').format(task.dueDate)}',
-                  color: const Color(0xFF6E5A50),
+                  color: _questMuted,
                 ),
                 _MiniChip(
                   icon: _getStatusIcon(task.status),
@@ -707,7 +730,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     style: GoogleFonts.quicksand(
                       fontSize: 16,
                       height: 1.3,
-                      color: const Color(0xFF3E2D28),
+                      color: _questText,
                     ),
                   ),
                 ],
@@ -731,7 +754,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     const _PanelTitle(
                       icon: Icons.camera_alt_rounded,
                       label: 'Photo Proof',
-                      color: Colors.blue,
+                      color: _questPhoto,
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
@@ -753,7 +776,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                         style: GoogleFonts.quicksand(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
+                          color: _questMuted,
                         ),
                       ),
                     ),
@@ -770,7 +793,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                     _PanelTitle(
                       icon: Icons.feedback_rounded,
                       label: 'Parent Feedback',
-                      color: Colors.red.shade800,
+                      color: _questDanger,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -778,7 +801,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                       style: GoogleFonts.quicksand(
                         fontSize: 16,
                         height: 1.3,
-                        color: const Color(0xFF3E2D28),
+                        color: _questText,
                       ),
                     ),
                   ],
@@ -842,7 +865,11 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.history_edu, size: 64, color: Colors.brown.shade300),
+              Icon(
+                Icons.history_edu,
+                size: 64,
+                color: _questBrown.withAlpha(120),
+              ),
               const SizedBox(height: 16),
               Text(
                 'No quest logs found.',
@@ -850,7 +877,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                 style: GoogleFonts.pixelifySans(
                   fontSize: 22,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF5A3E36),
+                  color: _questBrown,
                 ),
               ),
               const SizedBox(height: 8),
@@ -859,7 +886,7 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.quicksand(
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade700,
+                  color: _questMuted,
                 ),
               ),
             ],
@@ -898,13 +925,13 @@ class _TaskHistoryScreenState extends State<TaskHistoryScreen> {
   Color _resourceColor(String resource) {
     switch (resource.toLowerCase()) {
       case 'food':
-        return const Color(0xFFE8873D);
+        return _questFood;
       case 'play':
-        return const Color(0xFF4F83CC);
+        return _questPlay;
       case 'clean':
-        return const Color(0xFF48A06D);
+        return _questClean;
       default:
-        return const Color(0xFFB274C8);
+        return _questMagic;
     }
   }
 
@@ -1262,12 +1289,12 @@ class _PixelPanel extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: _questPanel,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF5A3E36), width: 2),
+        border: Border.all(color: _questBrown, width: 2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0xFF5A3E36),
+            color: _questBrown,
             offset: Offset(3, 3),
             blurRadius: 0,
           ),
@@ -1302,16 +1329,16 @@ class _PixelIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFFFF0C2),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF5A3E36), width: 2),
+            border: Border.all(color: _questBrown, width: 2),
             boxShadow: const [
               BoxShadow(
-                color: Color(0xFF5A3E36),
+                color: _questBrown,
                 offset: Offset(2, 2),
                 blurRadius: 0,
               ),
             ],
           ),
-          child: Icon(icon, color: const Color(0xFF5A3E36)),
+          child: Icon(icon, color: _questBrown),
         ),
       ),
     );
@@ -1341,10 +1368,10 @@ class _FilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(42) : Colors.white,
+          color: isSelected ? color.withAlpha(42) : _questPanel,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : const Color(0xFF5A3E36).withAlpha(90),
+            color: isSelected ? color : _questBrown.withAlpha(90),
             width: 2,
           ),
         ),
@@ -1360,7 +1387,7 @@ class _FilterPill extends StatelessWidget {
               style: GoogleFonts.quicksand(
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
-                color: isSelected ? color : const Color(0xFF5A3E36),
+                color: isSelected ? color : _questBrown,
               ),
             ),
           ],
