@@ -73,7 +73,11 @@ GoRouter createRouter(
             ),
             GoRoute(
               path: 'statistics',
-              builder: (context, state) => const TaskStatisticsScreen(),
+              builder: (context, state) => TaskStatisticsScreen(
+                authRepository: authRepository,
+                manageRepository: manageRepository,
+                analyticsRepository: analyticsRepository,
+              ),
             ),
             GoRoute(
               path: 'history',
