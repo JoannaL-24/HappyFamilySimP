@@ -263,8 +263,11 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         ? (occurrence.template?.proofRequired ?? false)
         : false;
     String? selectedChildId = isEditing ? occurrence.childId : null;
+    final List<String> selectedChildIds = isEditing ? [occurrence.childId] : [];
 
-    String? selectedResource = isEditing ? occurrence.template?.resource : 'food';
+    String? selectedResource = isEditing
+        ? occurrence.template?.resource
+        : 'food';
     int resourceAmount = isEditing
         ? (occurrence.template?.resourceAmount ?? 1)
         : 1;
@@ -309,7 +312,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       // TODO: consider allowing drag to dismiss when not editing existing task
       enableDrag: false,
       isDismissible: false,
-      
+
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => DraggableScrollableSheet(
@@ -358,7 +361,12 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                   child: SingleChildScrollView(
                     controller: scrollController,
                     physics: const ClampingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(24, 8,24, MediaQuery.of(context).viewInsets.bottom + 32,),
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      8,
+                      24,
+                      MediaQuery.of(context).viewInsets.bottom + 32,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -444,7 +452,22 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                         ),
 
                         // 4. Assignee (Child) Selector
-                        Text("Assignee", style: theme.textTheme.labelLarge),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEditing ? "Assignee" : "Assignees",
+                              style: theme.textTheme.labelLarge,
+                            ),
+                            if (!isEditing)
+                              Text(
+                                "assign to multiple at once",
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         SizedBox(
                           height: 90,
@@ -452,15 +475,28 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             scrollDirection: Axis.horizontal,
                             itemCount: _availableChildren.length,
                             itemBuilder: (context, index) {
+                              // ... rest of your existing ListView code ...
                               final child = _availableChildren[index];
-                              final bool isSelected =
-                                  selectedChildId == child['id'];
+                              final childId = child['id'].toString();
+                              final bool isSelected = isEditing
+                                  ? selectedChildId == childId
+                                  : selectedChildIds.contains(childId);
+
                               return Padding(
                                 padding: const EdgeInsets.only(right: 16.0),
                                 child: GestureDetector(
-                                  onTap: () => setSheetState(
-                                    () => selectedChildId = child['id'],
-                                  ),
+                                  onTap: () => setSheetState(() {
+                                    if (isEditing) {
+                                      selectedChildId = childId;
+                                      return;
+                                    }
+
+                                    if (selectedChildIds.contains(childId)) {
+                                      selectedChildIds.remove(childId);
+                                    } else {
+                                      selectedChildIds.add(childId);
+                                    }
+                                  }),
                                   child: Column(
                                     children: [
                                       CircleAvatar(
@@ -485,12 +521,17 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Text(
-                                        child['name'],
-                                        style: TextStyle(
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
+                                      SizedBox(
+                                        width: 72,
+                                        child: Text(
+                                          child['name'],
+                                          textAlign: TextAlign.center,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -640,9 +681,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                             padding: const EdgeInsets.only(top: 8, left: 4),
                             child: Text(
                               repeatOption == 'Custom'
-                                  ? TaskUtils.getCustomSummary(
-                                      customRecurrence,
-                                    )
+                                  ? TaskUtils.getCustomSummary(customRecurrence)
                                   : "Repeats $repeatOption",
                               style: TextStyle(
                                 color: theme.colorScheme.primary,
@@ -692,6 +731,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                                         currentStatus: currentStatus,
                                         proofRequired: proofRequired,
                                         selectedChildId: selectedChildId,
+                                        selectedChildIds: selectedChildIds,
                                         selectedResource: selectedResource,
                                         resourceAmount: resourceAmount,
                                         repeatOption: repeatOption,
@@ -729,7 +769,11 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                                     ),
                                   )
                                 : Text(
-                                    isEditing ? "Save Changes" : "Create Task",
+                                    isEditing
+                                        ? "Save Changes"
+                                        : selectedChildIds.length > 1
+                                        ? "Create ${selectedChildIds.length} Tasks"
+                                        : "Create Task",
                                   ),
                           ),
                         ),
@@ -745,6 +789,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     );
   }
 
+
   Future<bool> _submitTaskForm({
     required BuildContext context,
     required TaskOccurrence? occurrence,
@@ -754,6 +799,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String currentStatus,
     required bool proofRequired,
     required String? selectedChildId,
+    required List<String> selectedChildIds,
     required String? selectedResource,
     required int resourceAmount,
     required String repeatOption,
@@ -761,7 +807,11 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required DateTime? endDate,
     required VoidCallback onSavingStarted,
   }) async {
-    if (!_validateTaskForm(context, title, selectedChildId)) {
+    if (!_validateTaskForm(
+      context,
+      title,
+      occurrence == null ? selectedChildIds : [selectedChildId ?? ''],
+    )) {
       return false;
     }
 
@@ -779,7 +829,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         description: description,
         selectedDate: selectedDate,
         proofRequired: proofRequired,
-        selectedChildId: selectedChildId!,
+        selectedChildIds: selectedChildIds,
         selectedResource: selectedResource,
         resourceAmount: resourceAmount,
         recurrence: recurrence,
@@ -808,18 +858,18 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   bool _validateTaskForm(
     BuildContext context,
     String title,
-    String? selectedChildId,
+    List<String> selectedChildIds,
   ) {
     if (title.trim().isEmpty) {
       return false;
     }
 
-    if (selectedChildId != null) {
+    if (selectedChildIds.where((id) => id.isNotEmpty).isNotEmpty) {
       return true;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please select an assignee")),
+      const SnackBar(content: Text("Please select at least one assignee")),
     );
     return false;
   }
@@ -829,47 +879,58 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     required String description,
     required DateTime selectedDate,
     required bool proofRequired,
-    required String selectedChildId,
+    required List<String> selectedChildIds,
     required String? selectedResource,
     required int resourceAmount,
     required _RecurrenceFields recurrence,
     required DateTime? endDate,
   }) async {
     final resource = selectedResource ?? 'food';
+    final childIds = selectedChildIds
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
 
     if (recurrence.pattern == 'Never') {
-      final newTemplate = await _taskRepository.createTemplate(
+      final newTasks = <TaskOccurrence>[];
+
+      for (final childId in childIds) {
+        final newTemplate = await _taskRepository.createTemplate(
+          title: title,
+          description: description,
+          proofRequired: proofRequired,
+          resource: resource,
+          resourceAmount: resourceAmount,
+        );
+        final newTask = await _taskRepository.createOccurrence(
+          childId: childId,
+          dueDate: selectedDate,
+          status: 'NOTD',
+          templateId: newTemplate.id,
+        );
+        newTasks.add(newTask);
+      }
+
+      setState(() => _tasks.insertAll(0, newTasks));
+      return;
+    }
+
+    for (final childId in childIds) {
+      await _taskRepository.saveRecurringTask(
         title: title,
         description: description,
         proofRequired: proofRequired,
         resource: resource,
         resourceAmount: resourceAmount,
-      );
-      final newTask = await _taskRepository.createOccurrence(
-        childId: selectedChildId,
+        childId: childId,
         dueDate: selectedDate,
-        status: 'NOTD',
-        templateId: newTemplate.id,
+        endDate: endDate,
+        pattern: recurrence.pattern,
+        interval: recurrence.interval,
+        dayOfWeek: recurrence.dayOfWeek,
+        dayOfMonth: recurrence.dayOfMonth,
       );
-
-      setState(() => _tasks.insert(0, newTask));
-      return;
     }
-
-    await _taskRepository.saveRecurringTask(
-      title: title,
-      description: description,
-      proofRequired: proofRequired,
-      resource: resource,
-      resourceAmount: resourceAmount,
-      childId: selectedChildId,
-      dueDate: selectedDate,
-      endDate: endDate,
-      pattern: recurrence.pattern,
-      interval: recurrence.interval,
-      dayOfWeek: recurrence.dayOfWeek,
-      dayOfMonth: recurrence.dayOfMonth,
-    );
     await _refreshTasks();
   }
 
@@ -910,7 +971,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     onSavingStarted();
 
     if (updatePlan.scope == 'future') {
-        await _taskRepository.updateRecurringSeries(
+      await _taskRepository.updateRecurringSeries(
         templateId: occurrence.templateId,
         recurrenceId: occurrence.template!.recurrenceId,
         title: title,
@@ -929,7 +990,10 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         updateChildAssignments: selectedChildId != occurrence.childId,
         syncGeneratedOccurrences:
             updatePlan.updateScope == 'bounds' &&
-            !_isSameOptionalDate(occurrence.template?.endDate, normalizedEndDate),
+            !_isSameOptionalDate(
+              occurrence.template?.endDate,
+              normalizedEndDate,
+            ),
         oldDueDate: occurrence.dueDate,
       );
       await _refreshTasks();
@@ -1001,9 +1065,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         return null;
       }
 
-      return _SeriesUpdatePlan.future(
-        'rewrite',
-      );
+      return _SeriesUpdatePlan.future('rewrite');
     }
     if (patternTypeChanged || (recurrenceChanged && !dateChanged)) {
       final proceed = await _showSeriesActionDialog(
@@ -1017,9 +1079,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         return null;
       }
 
-      return _SeriesUpdatePlan.future(
-        'rewrite',
-      );
+      return _SeriesUpdatePlan.future('rewrite');
     }
 
     if (dateChanged) {
@@ -1034,9 +1094,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         return null;
       }
 
-      return _SeriesUpdatePlan.future(
-        'rewriteAll',
-      );
+      return _SeriesUpdatePlan.future('rewriteAll');
     }
 
     if (endDateChanged || basicInfoChanged) {
@@ -1051,9 +1109,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         return null;
       }
 
-      return _SeriesUpdatePlan.future(
-        'bounds',
-      );
+      return _SeriesUpdatePlan.future('bounds');
     }
 
     if (timeChanged) {
@@ -1083,12 +1139,14 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }) async {
     final resource = selectedResource ?? 'food';
     final template = occurrence.template;
-    final templateChanged = title != template?.title ||
+    final templateChanged =
+        title != template?.title ||
         description != template?.description ||
         proofRequired != template?.proofRequired ||
         resource != template?.resource ||
         resourceAmount != template?.resourceAmount;
-    final occurrenceChanged = !_isSameDate(occurrence.dueDate, selectedDate) ||
+    final occurrenceChanged =
+        !_isSameDate(occurrence.dueDate, selectedDate) ||
         !_isSameTime(occurrence.dueDate, selectedDate) ||
         currentStatus != occurrence.status ||
         selectedChildId != occurrence.childId;
@@ -1125,6 +1183,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
       resourceAmount: resourceAmount,
     );
   }
+
   void _replaceTaskInState({
     required TaskOccurrence occurrence,
     required DateTime selectedDate,
@@ -1326,10 +1385,12 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
   }
 
   String _childNameFor(String selectedChildId) {
-    return _availableChildren.firstWhere(
-      (child) => child['id'] == selectedChildId,
-      orElse: () => {'name': 'Unknown'},
-    )['name'].toString();
+    return _availableChildren
+        .firstWhere(
+          (child) => child['id'] == selectedChildId,
+          orElse: () => {'name': 'Unknown'},
+        )['name']
+        .toString();
   }
 
   Future<DateTime?> _showCustomDateTimePicker(
@@ -1338,6 +1399,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
     bool showTime,
   ) async {
     final theme = Theme.of(context);
+    double screenWidth = MediaQuery.of(context).size.width;
     String? dialogError;
     // These variables hold the "in-progress" selection
     DateTime tempDate = initialDate;
@@ -1370,7 +1432,7 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
                   borderRadius: BorderRadius.circular(28),
                 ),
                 content: SizedBox(
-                  width: 330,
+                  width: screenWidth * 0.85,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1653,29 +1715,6 @@ class _ParentTasksScreenState extends State<ParentTasksScreen> {
         ) ??
         false;
   }
-
-  Future<bool> _showForcedUpdateDialog(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Update Series"),
-            content: const Text(
-              "Changing the date or repeat pattern will reset all upcoming occurrences in this series. Do you want to apply this to all future tasks?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Update All"),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
 }
 
 class _RecurrenceFields {
@@ -1693,10 +1732,7 @@ class _RecurrenceFields {
 }
 
 class _SeriesUpdatePlan {
-  const _SeriesUpdatePlan({
-    required this.scope,
-    this.updateScope,
-  });
+  const _SeriesUpdatePlan({required this.scope, this.updateScope});
 
   factory _SeriesUpdatePlan.single() {
     return const _SeriesUpdatePlan(scope: 'single');
@@ -1781,6 +1817,7 @@ class _TaskCard extends StatelessWidget {
 
     return isDone ? colorScheme.surfaceContainerHigh : colorScheme.surface;
   }
+
   Color _borderColor(ColorScheme colorScheme, bool isDone) {
     if (isSelected) {
       return colorScheme.primary.withAlpha(100);
@@ -1811,10 +1848,7 @@ class _SelectionIcon extends StatelessWidget {
 }
 
 class _ChildAvatarWithStatus extends StatelessWidget {
-  const _ChildAvatarWithStatus({
-    required this.avatarUrl,
-    required this.isDone,
-  });
+  const _ChildAvatarWithStatus({required this.avatarUrl, required this.isDone});
 
   final String avatarUrl;
   final bool isDone;
@@ -1850,10 +1884,7 @@ class _ChildAvatarWithStatus extends StatelessWidget {
 }
 
 class _TaskCardDetails extends StatelessWidget {
-  const _TaskCardDetails({
-    required this.occurrence,
-    required this.isDone,
-  });
+  const _TaskCardDetails({required this.occurrence, required this.isDone});
 
   final TaskOccurrence occurrence;
   final bool isDone;
@@ -1866,6 +1897,7 @@ class _TaskCardDetails extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           template.title,
@@ -1875,30 +1907,37 @@ class _TaskCardDetails extends StatelessWidget {
             color: isDone ? colorScheme.outline : colorScheme.onSurface,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               occurrence.childName,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: colorScheme.secondary,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
+                // fontWeight: FontWeight.w500,
+                // letterSpacing: 0.5,
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
-              Icons.stars_rounded,
-              size: 14,
-              color: Colors.orangeAccent,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              "${template.resourceAmount} ${template.resource}",
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withAlpha(30),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  // TODO:change icon baeed on resource type in the future 
+                  const Icon(Icons.stars_rounded, size: 12, color: Colors.orangeAccent),
+                  const SizedBox(width: 4),
+                  Text(
+                    "${template.resourceAmount}",
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1935,6 +1974,7 @@ class _TaskCardTrailing extends StatelessWidget {
     );
   }
 }
+
 class _DueChip extends StatelessWidget {
   const _DueChip({required this.date, required this.isDone});
 
@@ -1944,19 +1984,28 @@ class _DueChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = isDone ? colorScheme.outline : colorScheme.primary;
+    final now = DateTime.now();
+    final isOverdue = date.isBefore(DateTime(now.year, now.month, now.day)) && !isDone;
+
+    // Semantic Colors: Red for overdue, Primary for upcoming, Outline for done
+    final Color color = isDone 
+        ? colorScheme.outline 
+        : (isOverdue ? colorScheme.error : colorScheme.primary);
+
+    String label = DateFormat('MMM d').format(date);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withAlpha(0x1A),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(8),
+        border: isOverdue ? Border.all(color: color.withAlpha(50)) : null,
       ),
       child: Text(
-        DateFormat('MMM d').format(date),
+        label,
         style: TextStyle(
           color: color,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
       ),
