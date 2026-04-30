@@ -32,17 +32,24 @@ class TaskRepository {
     required String name,
     required String color,
   }) async {
-    final response = await _supabase
-        .from('task_category')
-        .insert({
-          'name': name,
-          'color': color,
-          'parent_id': parentId,
-        })
-        .select('id, name, color')
-        .single();
+    try {
+      final response = await _supabase
+          .from('task_category')
+          .insert({
+            'name': name,
+            'color': color,
+            'parent_id': parentId,
+          })
+          .select('id, name, color')
+          .single();
 
-    return TaskCategory.fromJson(response);
+      return TaskCategory.fromJson(response);
+    } on PostgrestException catch (e) {
+      if (_isDuplicateCategoryNameError(e)) {
+        throw Exception('A category named "$name" already exists.');
+      }
+      rethrow;
+    }
   }
 
   Future<TaskCategory> updateTaskCategory({
@@ -55,24 +62,36 @@ class TaskRepository {
       throw Exception('Cannot update category before the parent profile loads.');
     }
 
-    final response = await _supabase
-        .from('task_category')
-        .update({
-          'name': name,
-          'color': color,
-        })
-        .eq('id', id)
-        .eq('parent_id', parentId)
-        .select('id, name, color');
+    try {
+      final response = await _supabase
+          .from('task_category')
+          .update({
+            'name': name,
+            'color': color,
+          })
+          .eq('id', id)
+          .eq('parent_id', parentId)
+          .select('id, name, color');
 
-    final rows = response as List;
-    if (rows.isEmpty) {
-      throw Exception(
-        'Category was not updated. The row was not found for this parent, or the task_category UPDATE policy blocked it.',
-      );
+      final rows = response as List;
+      if (rows.isEmpty) {
+        throw Exception(
+          'Category was not updated. The row was not found for this parent, or the task_category UPDATE policy blocked it.',
+        );
+      }
+
+      return TaskCategory.fromJson(Map<String, dynamic>.from(rows.first));
+    } on PostgrestException catch (e) {
+      if (_isDuplicateCategoryNameError(e)) {
+        throw Exception('A category named "$name" already exists.');
+      }
+      rethrow;
     }
+  }
 
-    return TaskCategory.fromJson(Map<String, dynamic>.from(rows.first));
+  bool _isDuplicateCategoryNameError(PostgrestException error) {
+    return error.code == '23505' ||
+        error.message.toLowerCase().contains('duplicate key');
   }
 
   Future<void> deleteTaskCategory({
@@ -100,7 +119,7 @@ class TaskRepository {
         )
       ''') // Corrected closing parentheses
         .eq('task_template.parent_id', parentId)
-        .or('status.eq.NOTD,status.eq.COMP')
+        .or('status.eq.NOTD,status.eq.MISS, status.eq.COMP')
         .order('status', ascending: true)
         .order('due_date', ascending: true);
 

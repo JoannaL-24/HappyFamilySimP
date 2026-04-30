@@ -10,6 +10,7 @@ enum TaskCategoryAction {
 Future<TaskCategory?> showTaskCategoryEditorDialog(
   BuildContext context, {
   TaskCategory? category,
+  List<TaskCategory> existingCategories = const [],
 }) {
   final nameController = TextEditingController(text: category?.name ?? '');
   final colors = [
@@ -86,6 +87,20 @@ Future<TaskCategory?> showTaskCategoryEditorDialog(
               if (name.isEmpty) {
                 setDialogState(() {
                   nameError = 'Category name is required';
+                });
+                return;
+              }
+
+              final duplicateExists = existingCategories.any(
+                (existingCategory) =>
+                    existingCategory.id != category?.id &&
+                    existingCategory.name.trim().toLowerCase() ==
+                        name.toLowerCase(),
+              );
+
+              if (duplicateExists) {
+                setDialogState(() {
+                  nameError = 'Category name already exists';
                 });
                 return;
               }
