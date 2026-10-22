@@ -1,11 +1,11 @@
 
 
-**Happy Family Sim**
+# **Happy Family Sim**
 
 **Sprint 3 Planning Document**  
 Team 21: Joanna Lin, Taylor Huang, William Hou, Zoey Lu
 
-## **Sprint Overview:**
+## Sprint Overview:
 
 After establishing the foundational architecture in Sprint 2, we aim to build more advanced features and improve the overall user experience in this sprint, including the UI, the gaming part, and task creation, assignment, submission, and review. Task completion and gaming are connected by adding the reward feature. Key deliverables include:
 
@@ -15,18 +15,18 @@ After establishing the foundational architecture in Sprint 2, we aim to build mo
 
 By the end of this sprint, the team aims to have a complete pipeline where a parent can assign and review a chore and a child can interact with their creature within the integrated game engine.
 
-## **Scrum Master:** Joanna Lin
+**Scrum Master:** Joanna Lin
 
-## **Meeting Schedule:** MWF at 7 PM
+**Meeting Schedule:** MWF at 7 PM
 
-## **Risks and Challenges:**
+### **Risks and Challenges:**
 
 - Implementing a notification system and allowing redirection to the respective page in the app when the user clicks the notification may be challenging  
 - The AI system for the pet would involve complicated state machine logic.
 
-# **Current Sprint Detail**
+## **Current Sprint Detail**
 
-## **Task Creation & Assignment (Parent):**
+## Task Creation & Assignment (Parent):
 
 **User Story \#2-6 (from previous sprint)**  
 As a parent, I would like to assign a task to multiple children simultaneously, letting each child have their individual version of the assigned task.
@@ -43,7 +43,7 @@ Acceptance criteria:
 2. Given the parent selects more than one child and clicks “Save,” when the request is processed, then the system creates a separate child-specific task instance for each selected child (each with its own unique task record) using the same task details.  
 3. Given the parent attempts to save a task with no children selected, when they click “Save,” then the system blocks submission and displays an error message indicating that at least one child must be selected.  
 4. Given the parent returns to the task list after saving, when the task list loads or refreshes, then the UI displays the assigned tasks for each child in a way that makes it clear each child has their own version.
-
+---
 **User Story \#2-14 (from previous sprint)**  
 As a parent, I would like to choose a task to assign from a list of preset tasks.
 
@@ -58,7 +58,7 @@ Acceptance criteria:
 1. As a parent, I should be able to see a list of preset tasks when I am creating a task.  
 2. Clicking on a preset task should auto-populate fields such as the name of the task.  
 3. Parents should be able to assign a preset task to children, just like a self-made one.
-
+---
 **User Story \#2-9**  
 As a parent, I would like to be able to require photo evidence for a task to be marked as complete.
 
@@ -76,7 +76,7 @@ Acceptance criteria:
 3. Given that a task requires photo evidence, when a child attempts to mark the task as complete, then they must provide a photo before submission.  
 4. Given that a task does not require photo evidence, when a child marks the task as complete, then they should be able to submit it without uploading a photo.  
 5. Given that photo evidence is submitted, when the task is viewed, then the photo should be displayed correctly in the UI.
-
+---
 **User Story \#2-12**  
 As a parent, I would like to create and name custom categories to organize tasks (e.g., "School," "Hygiene").
 
@@ -92,7 +92,7 @@ Acceptance criteria:
 2. Given the parent attempts to create a category with an empty, invalid, or duplicate name, when they click “Create,” then the system blocks the submission and displays a clear validation message explaining the issue.  
 3. Given one or more custom categories exist, when the parent views task organization or filtering options, then the created categories appear as available options for organizing and filtering tasks.  
 4. Given the parent selects a category filter, when the task list is updated, then only tasks associated with the selected category or categories are displayed, matching the database state.
-
+---
 **User Story \#2-15**  
 As a parent, I would like to see an intuitive task view, allowing me to see tasks each day.
 
@@ -109,7 +109,7 @@ Acceptance criteria:
 3. Given no tasks exist for a selected day, when the parent opens that day’s view, then the system displays a clear empty-state message indicating there are no tasks for that day.  
 4. Given a task is created, edited, or deleted, when the parent returns to or refreshes the daily task view, then the daily view reflects the updated task data accurately without showing outdated information.
 
-## **Task Viewing & Submission (Child):**
+## Task Viewing & Submission (Child):
 
 **User Story \#3-5**  
 As a child, I would like to take and upload a new photo as evidence for a required task and retake the photo if I don’t like it.
@@ -126,7 +126,7 @@ Acceptance criteria:
 2. Given the child doesn't like the photo they take, they can hit the retake photo button to retake it.  
 3. The child then can proceed the proof with a submit button or cancel button to abort the submission.  
 4. Given the child proceeds with a submit button, the task will be marked as done and waiting for parent approval.
-
+---
 **User Story \#3-6**  
 As a child, I would like to receive a notification when a task is going to expire in an hour.
 
@@ -141,7 +141,7 @@ Acceptance criteria:
 1. Given a task is scheduled to expire in exactly one hour, when the scheduled job runs, then the child receives a clear and distinct in-app notification before the deadline.  
 2. Given a notification is received, when the child taps on it, then they are directed to the details of the expiring task.  
 3. Given the notification system is functioning, when the task is already completed or approved, then no expiration notification should be sent.
-
+---
 **User Story \#3-7**  
 As a child, I would like to see an intuitive task view designed for children, allowing me to see tasks each day and having clear fonts and colors.
 
@@ -158,9 +158,7 @@ Acceptance criteria:
 3. Given the child is viewing a specific day, when no tasks are assigned for that day, then the system displays a simple and child-friendly empty-state message indicating that there are no tasks for that day.  
 4. Given the task view has been redesigned for children, when the child navigates through their daily tasks, then the interface remains visually consistent and easy to read across screens and components.
 
-## **Task Approval & History (Parent & Child):**
-
-## 
+## Task Approval & History (Parent & Child):
 
 **User Story \#4-2**  
 As a parent, I would like to view the submitted photo evidence for a task.
@@ -176,7 +174,7 @@ Acceptance criteria:
 1. As a parent, for the task that required photo evidence I should be able to see a section for displaying the submitted photo under the pending details.  
 2. For those tasks that don’t require the proof I won’t be able to see the evidence section.  
 3. I can also click on the photo to zoom in and out.
-
+---
 **User Story \#4-6**  
 As a child, I would like to receive a notification when a task submission is approved.
 
@@ -192,7 +190,7 @@ Acceptance criteria:
 2. Given the notification is received, when the child taps on it, then they are taken to view the completed task.  
 3. Given the backend task state logic is implemented correctly, when a task status changes to approved, then the system sends the approval notification only to the child assigned to that task.  
 4. Given a task is not approved, when its status remains assigned, submitted, or declined, then the child does not receive an approval notification for that task.
-
+---
 **User Story \#4-7**  
 As a child, I would like to receive a notification, including parent feedback, when a task submission is rejected.
 
@@ -207,7 +205,7 @@ Acceptance criteria:
 1. Given a parent successfully rejects a task submission and provides text feedback, when the rejection is recorded, then the corresponding child immediately receives a notification detailing the rejection.  
 2. Given the notification is received, when the child taps on it, then they are taken to view the rejected task.  
 3. Given the backend task state logic is implemented correctly, when a task status changes to rejected, then the system sends the approval notification only to the child assigned to that task.
-
+---
 **User Story \#4-8**  
 As a parent/child, I would like to view a historical log of all tasks completed, missed, or rejected.
 
@@ -228,7 +226,7 @@ Acceptance criteria:
 4. As a child, I should be able to filter historical log by the status of the tasks.  
 5. As a parent/child, I will be able to see the details of that task when I click on it.  
    
-
+---
 **User Story \#4-9**  
 As a parent, I would like to view a report showing the task completion rate for each child over the last week/month.
 
@@ -244,7 +242,7 @@ Acceptance criteria:
 1. Given a parent views the report, they should be able to select a time frame (last week or last month).  
 2. The report must accurately display the percentage of tasks completed versus total tasks assigned to the selected child within the chosen time frame.  
 3. Given there is more than one child, the parent should be able to view the report for each child individually.
-
+---
 **User Story \#4-10**  
 As a parent, I would like to view simple statistics of task completions across all the categories.
 
@@ -261,7 +259,7 @@ Acceptance criteria:
 2. The data used for statistics should be based on historical task occurrences across all children.  
 3. Given the parent views the statistics, the data should be presented in a way that helps inform reward adjustment decisions.
 
-## **Gamification & Creature Care:**
+## Gamification & Creature Care:
 
 **User Story \#5-4**  
 As a child, I would like to see my creature's status (hygiene, hunger, hydration) slowly deplete over time.
@@ -278,18 +276,7 @@ Acceptance Criteria:
 1. Given the game is active, when time passes, then the creature's hunger, hygiene, and hydration status bars must decrease at a consistent, predefined rate.  
 2. Given the app is reopened after being closed, when the state is fetched, then the status levels must accurately reflect the depletion that occurred while the app was inactive.  
 3. Given a status bar reaches its minimum value, when further depletion is calculated, then the value must stay at zero and not become a negative number.
-
-   
-
-   
-
-   
-
-   
-
- 
-
-
+---
 **User Story \#5-6**  
 As a child, I would like to be able to open a mystery box (cosmetic items, resources, etc) under certain conditions.
 
@@ -306,7 +293,7 @@ Acceptance Criteria:
 1. Given the child has met a predefined goal (e.g., a specific number of completed tasks), when they enter the game, then a mystery box must be available for them to open.  
 2. Given the mystery box is opened, when the reward is revealed, then the system must display the specific item or resource granted.  
 3. Given a reward is granted, when the sequence finishes, then the item must be immediately functional or visible in the child's inventory.
-
+---
 **User Story \#5-7**  
 As a child, I would like my virtual pet to have autonomous behaviors and a life cycle (like sleeping and wandering) so that it feels like a living creature.
 
@@ -325,7 +312,7 @@ Acceptance Criteria
 2. Given the child taps on the pet while it is awake, when the touch event is registered, then the pet must immediately play a unique reaction animation.  
 3. Given the pet is sleeping, when the child attempts to interact, then the system should provide a subtle visual hint indicating the pet is resting.
 
-## **UI & Aesthetics:**
+## UI & Aesthetics:
 
 **User Story \#6-3**  
 Update icons so that they match the overall aesthetic.
@@ -342,11 +329,8 @@ Acceptance criteria:
 2. Given that the new icons are applied correctly, when navigating through the app, then all relevant pages should display the updated icons without missing or broken elements.  
 3. Given that consistency is required, when comparing different parts of the app, then icon styles (color, size, and design language) should remain uniform across all pages.
 
-## 
 
-## 
-
-## **Current Total Hours:** 175.5 Hrs
+## Current Total Hours: 175.5 Hrs
 
 | Name | Estimated Time |
 | :---: | :---: |
@@ -355,7 +339,7 @@ Acceptance criteria:
 | Zoey | 43 Hrs |
 | Joanna | 41 Hrs |
 
-# **Remaining Backlog**
+# Remaining Backlog
 
 **User Account & Authentication:**
 

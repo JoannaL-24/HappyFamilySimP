@@ -1,11 +1,11 @@
 
 
-**Happy Family Sim**
+# **Happy Family Sim**
 
 **Sprint 2 Planning Document**  
 Team 21: Joanna Lin, Taylor Huang, William Hou, Zoey Lu
 
-## **Sprint Overview:**
+## Sprint Overview:
 
 After establishing the foundational architecture in Sprint 1, we aim to build more advanced features and improve the overall user experience in this sprint, including the UI, the gaming part, and task creation, assignment, submission, and review. Task completion and gaming are connected by adding the reward feature. Key deliverables include:
 
@@ -16,19 +16,19 @@ After establishing the foundational architecture in Sprint 1, we aim to build mo
 
 By the end of this sprint, the team aims to have a functional pipeline where a parent can assign and review a chore and a child can interact with their creature within the integrated game engine.
 
-## **Scrum Master:** Joanna Lin
+**Scrum Master:** Joanna Lin
 
-## **Meeting Schedule:** MWF at 7 PM
+**Meeting Schedule:** MWF at 7 PM
 
-## **Risks and Challenges:**
+### Risks and Challenges:
 
 - Finding suitable art assets and/or drawing them ourselves  
 - Although we learned the basics of Flutter and Supabase during the previous sprint, the features to be implemented in this sprint may require more advanced skills or tools.  
 - Modifying the UI and adding new parts to the workflow may induce a lot of changes to what we have built in the previous sprint.
 
-# **Current Sprint Detail**
+## **Current Sprint Detail**
 
-## **User Account & Authentication:**
+## User Account & Authentication:
 
 **User Story \#1-4 (from previous sprint)**  
 As a parent, I would like to reset my password if I forget it.
@@ -45,9 +45,9 @@ Acceptance criteria:
 2. Given that the email sending system using the Supabase API is implemented correctly, I, as a parent with a valid account, should receive an email containing a password reset link.  
 3. Given that the authentication verification system is implemented correctly, I, as a parent, should be able to enter the authentication code and successfully reset my password before the link expires.
 
-4. ## Given that the password reset link has expired, I, as a parent, should be notified that the link is no longer valid and be required to request a new password reset link.
+4. Given that the password reset link has expired, I, as a parent, should be notified that the link is no longer valid and be required to request a new password reset link.
 
-## **Task Creation & Assignment (Parent):**
+## Task Creation & Assignment (Parent):
 
 **User Story \#2-3**  
 As a parent, I would like to set a task to repeat on a daily, weekly, or custom frequency (recurring task).
@@ -68,7 +68,7 @@ Acceptance criteria:
 3. Given a task has a valid recurrence rule, when the task list is loaded, then the task list displays the recurring task and includes the individual occurrences that fall within a certain time range according to the saved recurrence settings.  
 4. Given the parent updates or turns off recurrence for an existing task, when they save the changes, then the database and task list update so future occurrences reflect the new settings and previously generated occurrences are handled consistently (updated or removed) without duplicates.
 
-## 
+---
 
 **User Story \#2-4**  
 As a parent, I would like to set a task as a one-off, non-recurring task.
@@ -86,6 +86,8 @@ Acceptance criteria:
 2. Given the task is saved as one off, when the system writes to the database, then the task record is stored with a clear indicator that it is non-recurring and no recurrence rule data is stored for that task.  
 3. Given a one off task is created, when the task list is loaded, then the task appears as a single task instance and does not generate additional future occurrences.
 
+---
+
 **User Story \#2-6**  
 As a parent, I would like to assign a task to multiple children simultaneously, letting each child have their individual version of the assigned task.
 
@@ -101,7 +103,7 @@ Acceptance criteria:
 2. Given the parent selects more than one child and clicks “Save,” when the request is processed, then the system creates a separate child-specific task instance for each selected child (each with its own unique task record) using the same task details.  
 3. Given the parent attempts to save a task with no children selected, when they click “Save,” then the system blocks submission and displays an error message indicating that at least one child must be selected.  
 4. Given the parent returns to the task list after saving, when the task list loads or refreshes, then the UI displays the assigned tasks for each child in a way that makes it clear each child has their own version.
-
+---
 **User Story \#2-7**  
 As a parent, I would like to specify the type of resource (e.g., Water, Food, Hygiene) as a reward.
 
@@ -117,7 +119,7 @@ Acceptance criteria:
 1. Given the parent is creating or editing a task and the reward section is visible, when they open the resource selector, then the UI displays available resource types (e.g., Water, Food, Hygiene) and allows the parent to from the resource types.  
 2. Given the parent selects a resource type and saves the task, when the save completes, then the task displays the selected resource type in the task details.  
 3. Given a task with a resource reward exists in the database, when the parent refreshes the page or reloads the task list, then the UI continues to show the correct resource type reward and matches what is stored in the database.
-
+---
 **User Story \#2-8**  
 As a parent, I would like to specify the amount of the resource reward for task completion.
 
@@ -132,7 +134,7 @@ Acceptance criteria:
 1. Given the parent is creating or editing a task, when they enter a numeric amount in the resource amount field and click “Save,” then the task is saved successfully and the reward amount is shown in the task details.  
 2. Given the parent enters an invalid resource amount (non-numeric, negative, or empty when required), when they click “Save,” then the system blocks saving and displays a clear validation message.  
 3. Given a task has a resource reward amount saved, when the parent reloads the page or revisits the task later, then the reward amount displayed matches what is stored in the database and does not revert.
-
+---
 **User Story \#2-14**  
 As a parent, I would like to choose a task to assign from a list of preset tasks.
 
@@ -148,7 +150,7 @@ Acceptance criteria:
 2. Clicking on a preset task should auto-populate fields such as the name of the task.  
 3. Parents should be able to assign a preset task to children, just like a self-made one.
 
-## **Task Viewing & Submission (Child):**
+## Task Viewing & Submission (Child):
 
 **User Story \#3-1**  
 As a child, I would like to view a list of all tasks currently assigned to me.
@@ -166,7 +168,7 @@ Acceptance criteria:
 1. Given the child navigates to the tasks page, I can see a list of tasks that are assigned to me.  
 2. Given the refresh scroll, I can refresh the page to update the list of tasks.  
 3. Given that the database schema in Supabase is designed correctly, each task assigned to the child should be properly stored and associated with the correct child account.
-
+---
 **User Story \#3-2**  
 As a child, I would like the list of tasks to display the due date and remaining time.
 
@@ -182,7 +184,7 @@ Acceptance criteria:
 2. For the tasks that are close to the deadline of the due date, it will be shown in red, which indicates it needs immediate action.  
 3. Given that the due date exists for a task, the remaining time should be calculated and displayed accurately.  
 4. Given that the UI and backend are integrated correctly, the due date and remaining time should load automatically when the task list page is opened.
-
+---
 **User Story \#3-3**  
 As a child, I would like to select a task to view its full title, description, and required reward.
 
@@ -198,7 +200,7 @@ Acceptance criteria:
 1. Given that the child selects a task, a pop-up will show up.  
 2. Given that the pop-up appears, it will display all the task information.  
 3. Given that the task information is fetched correctly, I, as a child, should be able to see the exact same description that my parent entered for the task.
-
+---
 **User Story \#3-4**  
 As a child, I would like to mark a task as complete to submit it for parent approval.
 
@@ -215,9 +217,7 @@ Acceptance criteria:
 2. Given that I, a child, marked the task as checked, the task status will change to pending.  
 3. Given that a task is marked as complete, the task should be sent for parent approval and no longer appear as an active task.
 
-## **Task Approval & History (Parent & Child):**
-
-## 
+## Task Approval & History (Parent & Child):
 
 **User Story \#4-1**  
 As a parent, I would like to view a dashboard listing all task submissions pending my approval.
@@ -235,7 +235,7 @@ Acceptance criteria:
 2. When a child submits a new review, the change should be reflected on my list and in the database.  
 3. I should be able to tell the submissions from different children apart.  
 4. Tasks that have already been rejected or accepted should not be shown on the pending list.
-
+---
 **User Story \#4-3**  
 As a parent, I would like to approve a completed task submission.
 
@@ -251,7 +251,7 @@ Acceptance criteria:
 2. A task should be removed from the pending list after it is accepted.  
 3. The acceptance of a task should be reflected in the database.  
 4. Given that the backend logic and database connection are implemented correctly, I, as a parent, should be able to approve a completed task submission.
-
+---
 **User Story \#4-4**  
 As a parent, I would like to reject a completed task submission.
 
@@ -267,7 +267,7 @@ Acceptance criteria:
 2. Given that the backend logic and database connection are implemented correctly, rejecting a task should update the task status to “rejected” in the database.  
 3. Given that real-time updates are implemented correctly, the pending task list should immediately reflect the rejection action without requiring a manual page refresh.  
 4. Given that a task submission is rejected, it should no longer appear in the pending approval list.
-
+---
 **User Story \#4-5**  
 As a parent, I would like to enter text feedback when rejecting a task submission.
 
@@ -286,7 +286,7 @@ Acceptance criteria:
 4. Given that the frontend and backend are integrated correctly, the feedback message should be saved and reflected in the system after submission.  
 5. Given that manual testing is completed, rejection feedback should correctly update the task status and store the message without affecting other task submissions.
 
-**UI & Aesthetics:**
+## UI & Aesthetics:
 
 **User Story \#6-1**  
 The aesthetic throughout the app should be consistent. Such as the color scheme, background, and font.
@@ -306,7 +306,7 @@ Acceptance criteria:
 3. Given that UI components such as buttons are updated, all buttons should follow a consistent style in terms of color, shape, size, and font.  
 4. Given that external packages or images are used, all UI elements should function correctly and remain properly connected to their original features.  
 5. Given that testing is completed, visual elements such as colors, fonts, backgrounds, and buttons should appear consistently across the entire application without layout or styling conflicts.
-
+---
 **User Story \#6-2**  
 Create a logo for our app, and add it to the corresponding places.
 
@@ -321,7 +321,7 @@ Acceptance criteria:
 2. Given that the logo design is finalized, the logo file should be exported in appropriate formats and resolutions for use in the app.  
 3. Given that the logo is implemented in the UI, it should not distort, stretch, or overlap with other UI components.
 
-## **Gamification & Creature Care:**
+## Gamification & Creature Care:
 
 **User Story \#5-3**  
 As a child, I would like to select a resource type to apply to my creature/environment.
@@ -338,7 +338,7 @@ Acceptance criteria:
 1. Given that a resource is applied, the correct animation triggers.  
 2. Given that a resource is applied, the resource is correctly reduced.  
 3. Given that a resource is applied, there’s clear visual feedback as to which resource is applied.
-
+---
 **User Story \#5-5**
 
 As a child, I would like to see visual feedback (e.g., an animated "sad" state) when the creature's status drops too low.
@@ -355,7 +355,7 @@ Acceptance Criteria:
 1. Given a creature’s status level falls below a threshold, when viewed by the child, then the creature must display a clear visual change indicating its need.  
 2. Given the creature is in a "needy" state, when resources are applied to raise levels above the threshold, then the creature must return to its normal visual state. 
 
-## 
+---
 
 **User Story \#5-8**
 
@@ -376,7 +376,7 @@ Acceptance Criteria:
 3. Given an item has been positioned in the environment, when the application is restarted, then the item must remain in its saved location.  
    
 
-## **Current Total Hours:** Hrs
+## Current Total Hours: 176.5Hrs
 
 | Name | Estimated Time |
 | :---: | :---: |
@@ -385,7 +385,7 @@ Acceptance Criteria:
 | Zoey | 43.5 Hrs |
 | Joanna | 41 Hrs |
 
-# **Remaining Backlog**
+# Remaining Backlog
 
 **User Account & Authentication:**
 
