@@ -12,7 +12,9 @@ The project combines practical household task management with a pixel-art game. 
 
 **Developers: Joanna Lin, Taylor Huang, William Hou, Zoey Lu** 
 
-<img src="assets/images/Assets/happy-family-sim.png" alt="Happy Family Sim" width="500">
+<p align="center">
+  <img src="assets/images/Assets/happy-family-sim.png" alt="Happy Family Sim" width="500">
+</p>
 
 ## Contents
 
