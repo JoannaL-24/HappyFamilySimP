@@ -1,5 +1,6 @@
 <p align="center">
   <img src="assets/images/Assets/name_logo.png" alt="Happy Family Sim" width="600">
+  <img src="assets/images/Assets/happy-family-sim.png" alt="Happy Family Sim" width="600">
 </p>
 
 # Happy Family Sim
