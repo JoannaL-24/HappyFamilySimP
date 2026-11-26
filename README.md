@@ -1,6 +1,5 @@
 <p align="center">
   <img src="assets/images/Assets/name_logo.png" alt="Happy Family Sim" width="600">
-  <img src="assets/images/Assets/happy-family-sim.png" alt="Happy Family Sim" width="600">
 </p>
 
 # Happy Family Sim
@@ -12,6 +11,7 @@ Happy Family Sim is a family chore tracker built with Flutter, Flame, and Supaba
 The project combines practical household task management with a pixel-art game. Photo evidence and parent review give families a way to verify completion, while pet care and room decoration make progress visible to children.
 
 **Developers: Joanna Lin, Taylor Huang, William Hou, Zoey Lu** 
+<img src="assets/images/Assets/happy-family-sim.png" alt="Happy Family Sim" width="500">
 
 ## Contents
 
